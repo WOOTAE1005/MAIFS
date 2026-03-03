@@ -38,7 +38,7 @@ This section is the project-status source of truth for day-to-day work.
 When a change is made, update this section first in the same commit cycle.
 
 Snapshot date:
-- `2026-02-16`
+- `2026-03-03`
 
 Current branch policy:
 - Primary integration branch: `feat/catnet-integration`
@@ -52,6 +52,9 @@ Completed milestones:
 - CAT-Net integrated into frequency/compression slot.
 - Spatial Mesorch backend integrated and validated via A/B evaluation.
 - Meta trainer supports optional GPU paths (torch/xgboost) with CPU fallback.
+- Specialist confidence/trust flow corrected: trust is now applied only at consensus stage.
+- ManagerAgent consensus/debate path aligned with MAIFS runtime engines (COBRA + DebateChamber).
+- Runtime/operations/pathA docs consolidated as code-first SSOT docs under `docs/research/`.
 
 In progress:
 - DAAC Phase 2 adaptive routing stabilization (Path B synthetic reproducibility verified; Path A collector pipeline integrated).
@@ -96,6 +99,8 @@ Latest implemented items (code-level):
 - `experiments/configs/phase2_patha_scale120_feat_enhanced36_ridge.yaml` now includes `gate_profiles.scale120_tuned`.
 - `experiments/configs/phase2_patha_scale120_feat_enhanced36_ridge.yaml` now includes `gate_profiles.scale120_conservative` (expanded independent-block 기준).
 - `experiments/analyze_patha_kfold_variance.py` added for split_seed/test_fold variance decomposition across multiple fixed-kfold summaries.
+- `experiments/run_phase2_patha.py` now emits 3-case study metrics (`cobra_only`, `daac_only`, `cobra_plus_daac`) and pairwise McNemar comparisons in result JSON.
+- `experiments/run_phase2_patha_multiseed.py` now aggregates 3-case metrics across seeds under `aggregate_case3`.
 
 Known blockers and risks:
 - GitHub push may fail without local credential/SSH setup.
@@ -201,6 +206,11 @@ Entry format guideline:
 - `2026-02-16 | daac/pathA-gate-policy-refresh | 확장 블록(최소 3개 kfold25 포함) 기준 게이트 재튜닝 후 보수형 프로파일(scale120_conservative) 추가 및 active 전환 | gate_profile_tuning_with_kfold_block3_20260216.json + gate_profile_tuning_conservative_seed42_only_20260216.json + config update | 운영 게이트는 보수형 유지, 후보 모델 개선 후 재튜닝`
 - `2026-02-16 | daac/pathA-kfold75-scaleup | fixed-kfold split-seed 300~314(15 seeds x 5 folds = 75 runs) 확장 검증 실행 및 gate/profile 재평가 | fixed_kfold_summary_75runs_15seeds_300_314_20260216.json + fixed_kfold_gate_profiles_75runs_15seeds_300_314_20260216.json + fixed_kfold_subgroup_summary_75runs_15seeds_300_314_20260216.json + gate_profile_tuning_conservative_with_kfold75_20260216.json | ΔF1 mean=-0.0010, sign 34/34/7로 near-zero; 보수형 gate 재확인`
 - `2026-02-16 | daac/pathA-kfold-variance-diagnostics | kfold 블록 변동성 진단 스크립트/테스트 추가 및 25x3+75 통합 리포트 생성 | tests/test_patha_kfold_variance.py + experiments/analyze_patha_kfold_variance.py + kfold_variance_diagnostics_25x3_plus_75_20260216.json | split_seed/test_fold 혼합 변동 유지로 모델-side 개선 우선`
+- `2026-03-03 | runtime/docs | specialist confidence의 trust 이중반영 제거 + ManagerAgent 합의/토론 경로 정렬 + SSOT 문서(현재 아키텍처/운영 리스크/PathA 최소 runbook) 추가 | python -m py_compile src/agents/manager_agent.py src/agents/specialist_agents.py src/maifs.py | trust/gate/fallback 리스크 회귀 테스트와 Path A 운영 기준 검증 지속`
+- `2026-03-03 | daac/pathA-case3 | Path A 결과에 3-case(cobra_only/daac_only/cobra_plus_daac) 평가 및 멀티시드 집계 추가 | py_compile + tests/test_phase2_router_guard.py tests/test_phase2_gate_stats.py + precollected smoke(run_phase2_patha, run_phase2_patha_multiseed) | gate 정책은 기존 active profile 기준을 유지하며 case3 지표로 추가 해석`
+- `2026-03-03 | runtime/debate-trust | DebateChamber에서 challenger trust 기반 confidence delta 제거(토론 단계 trust-neutral) | .venv-qwen/bin/python -m pytest tests/test_debate.py tests/test_trust_and_manager_alignment.py -q (26 passed) | trust는 COBRA 합의 단계 단일 반영으로 유지`
+- `2026-03-03 | daac/pathA-multidata | 4개 데이터 조합(DS-A/B/C/D) x split-seed10 확장 평가 완료 및 통합 비교 json 생성 | experiments/results/phase2_patha_case3_multidata/multi_dataset_case3_comparison_20260303.json | 고정 0.5 fusion 열세 원인 분석(가중치 튜닝/구조 개선) 진행`
+- `2026-03-03 | docs/research | 논문용 표 문서(PAPER_TABLE_20260303) 추가 및 SSOT/runbook/README 링크 동기화 | 문서 경로/수치 수동 검증 | 신규 실험 시 표 재생성 자동화 스크립트 추가 검토`
 
 ## Golden Rules
 

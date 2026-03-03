@@ -1,0 +1,1158 @@
+{
+  "base_config": "experiments/configs/phase2_patha_scale120_feat_evidence51_oracle_lossaverse_guard.yaml",
+  "precollected": "experiments/results/ab_live_evidence51_new/patha_agent_outputs_20260217_113029.jsonl",
+  "rows": [
+    {
+      "case": 1,
+      "feature": "evidence_2ch",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "hybrid_only",
+        "min_val_gain": 0.005,
+        "max_route_rate": 0.5,
+        "enforce_non_regression": true,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.85,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "hybrid_guard_gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7671265615109354,
+      "f1_diff": 0.0,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_01/phase2_patha_results_20260217_140311.json"
+    },
+    {
+      "case": 2,
+      "feature": "evidence_2ch",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 0.7,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.85,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7911680911680912,
+      "f1_diff": 0.02404152965715578,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_02/phase2_patha_results_20260217_140312.json"
+    },
+    {
+      "case": 3,
+      "feature": "evidence_2ch",
+      "guard": {
+        "enabled": false,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 1.0,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.85,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7911680911680912,
+      "f1_diff": 0.02404152965715578,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_03/phase2_patha_results_20260217_140314.json"
+    },
+    {
+      "case": 4,
+      "feature": "risk52",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "hybrid_only",
+        "min_val_gain": 0.005,
+        "max_route_rate": 0.5,
+        "enforce_non_regression": true,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.85,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "hybrid_guard_gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7671265615109354,
+      "f1_diff": 0.0,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_04/phase2_patha_results_20260217_140316.json"
+    },
+    {
+      "case": 5,
+      "feature": "risk52",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 0.7,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.85,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7900621429601621,
+      "f1_diff": 0.022935581449226694,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_05/phase2_patha_results_20260217_140317.json"
+    },
+    {
+      "case": 6,
+      "feature": "risk52",
+      "guard": {
+        "enabled": false,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 1.0,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.85,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7900621429601621,
+      "f1_diff": 0.022935581449226694,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_06/phase2_patha_results_20260217_140319.json"
+    },
+    {
+      "case": 7,
+      "feature": "enhanced36",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "hybrid_only",
+        "min_val_gain": 0.005,
+        "max_route_rate": 0.5,
+        "enforce_non_regression": true,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.85,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "hybrid_guard_gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7671265615109354,
+      "f1_diff": 0.0,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_07/phase2_patha_results_20260217_140320.json"
+    },
+    {
+      "case": 8,
+      "feature": "enhanced36",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 0.7,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.85,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "hybrid_guard_gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7671265615109354,
+      "f1_diff": 0.0,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_08/phase2_patha_results_20260217_140322.json"
+    },
+    {
+      "case": 9,
+      "feature": "enhanced36",
+      "guard": {
+        "enabled": false,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 1.0,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.85,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7537037037037037,
+      "f1_diff": -0.013422857807231736,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_09/phase2_patha_results_20260217_140323.json"
+    },
+    {
+      "case": 10,
+      "feature": "evidence_2ch",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "hybrid_only",
+        "min_val_gain": 0.005,
+        "max_route_rate": 0.5,
+        "enforce_non_regression": true,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "hybrid_guard_gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7671265615109354,
+      "f1_diff": 0.0,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_10/phase2_patha_results_20260217_140325.json"
+    },
+    {
+      "case": 11,
+      "feature": "evidence_2ch",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 0.7,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7911680911680912,
+      "f1_diff": 0.02404152965715578,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_11/phase2_patha_results_20260217_140326.json"
+    },
+    {
+      "case": 12,
+      "feature": "evidence_2ch",
+      "guard": {
+        "enabled": false,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 1.0,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7911680911680912,
+      "f1_diff": 0.02404152965715578,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_12/phase2_patha_results_20260217_140328.json"
+    },
+    {
+      "case": 13,
+      "feature": "risk52",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "hybrid_only",
+        "min_val_gain": 0.005,
+        "max_route_rate": 0.5,
+        "enforce_non_regression": true,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "hybrid_guard_gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7671265615109354,
+      "f1_diff": 0.0,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_13/phase2_patha_results_20260217_140330.json"
+    },
+    {
+      "case": 14,
+      "feature": "risk52",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 0.7,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7900621429601621,
+      "f1_diff": 0.022935581449226694,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_14/phase2_patha_results_20260217_140331.json"
+    },
+    {
+      "case": 15,
+      "feature": "risk52",
+      "guard": {
+        "enabled": false,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 1.0,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7900621429601621,
+      "f1_diff": 0.022935581449226694,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_15/phase2_patha_results_20260217_140333.json"
+    },
+    {
+      "case": 16,
+      "feature": "enhanced36",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "hybrid_only",
+        "min_val_gain": 0.005,
+        "max_route_rate": 0.5,
+        "enforce_non_regression": true,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "hybrid_guard_gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7671265615109354,
+      "f1_diff": 0.0,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_16/phase2_patha_results_20260217_140334.json"
+    },
+    {
+      "case": 17,
+      "feature": "enhanced36",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 0.7,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "hybrid_guard_gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7671265615109354,
+      "f1_diff": 0.0,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_17/phase2_patha_results_20260217_140336.json"
+    },
+    {
+      "case": 18,
+      "feature": "enhanced36",
+      "guard": {
+        "enabled": false,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 1.0,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7537037037037037,
+      "f1_diff": -0.013422857807231736,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_18/phase2_patha_results_20260217_140337.json"
+    },
+    {
+      "case": 19,
+      "feature": "evidence_2ch",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "hybrid_only",
+        "min_val_gain": 0.005,
+        "max_route_rate": 0.5,
+        "enforce_non_regression": true,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.6,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "hybrid_guard_gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7671265615109354,
+      "f1_diff": 0.0,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_19/phase2_patha_results_20260217_140339.json"
+    },
+    {
+      "case": 20,
+      "feature": "evidence_2ch",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 0.7,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.6,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7911680911680912,
+      "f1_diff": 0.02404152965715578,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_20/phase2_patha_results_20260217_140340.json"
+    },
+    {
+      "case": 21,
+      "feature": "evidence_2ch",
+      "guard": {
+        "enabled": false,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 1.0,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.6,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7911680911680912,
+      "f1_diff": 0.02404152965715578,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_21/phase2_patha_results_20260217_140342.json"
+    },
+    {
+      "case": 22,
+      "feature": "risk52",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "hybrid_only",
+        "min_val_gain": 0.005,
+        "max_route_rate": 0.5,
+        "enforce_non_regression": true,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.6,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "hybrid_guard_gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7671265615109354,
+      "f1_diff": 0.0,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_22/phase2_patha_results_20260217_140343.json"
+    },
+    {
+      "case": 23,
+      "feature": "risk52",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 0.7,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.6,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7900621429601621,
+      "f1_diff": 0.022935581449226694,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_23/phase2_patha_results_20260217_140345.json"
+    },
+    {
+      "case": 24,
+      "feature": "risk52",
+      "guard": {
+        "enabled": false,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 1.0,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.6,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7900621429601621,
+      "f1_diff": 0.022935581449226694,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_24/phase2_patha_results_20260217_140347.json"
+    },
+    {
+      "case": 25,
+      "feature": "enhanced36",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "hybrid_only",
+        "min_val_gain": 0.005,
+        "max_route_rate": 0.5,
+        "enforce_non_regression": true,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.6,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "hybrid_guard_gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7671265615109354,
+      "f1_diff": 0.0,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_25/phase2_patha_results_20260217_140348.json"
+    },
+    {
+      "case": 26,
+      "feature": "enhanced36",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 0.7,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.6,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "hybrid_guard_gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7671265615109354,
+      "f1_diff": 0.0,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_26/phase2_patha_results_20260217_140350.json"
+    },
+    {
+      "case": 27,
+      "feature": "enhanced36",
+      "guard": {
+        "enabled": false,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 1.0,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.6,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7537037037037037,
+      "f1_diff": -0.013422857807231736,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_27/phase2_patha_results_20260217_140351.json"
+    },
+    {
+      "case": 28,
+      "feature": "evidence_2ch",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "hybrid_only",
+        "min_val_gain": 0.005,
+        "max_route_rate": 0.5,
+        "enforce_non_regression": true,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.5,
+        "noise": 0.85,
+        "fatformer": 0.2,
+        "spatial": 0.9
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "hybrid_guard_gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7671265615109354,
+      "f1_diff": 0.0,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_28/phase2_patha_results_20260217_140353.json"
+    },
+    {
+      "case": 29,
+      "feature": "evidence_2ch",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 0.7,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.5,
+        "noise": 0.85,
+        "fatformer": 0.2,
+        "spatial": 0.9
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7911680911680912,
+      "f1_diff": 0.02404152965715578,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_29/phase2_patha_results_20260217_140355.json"
+    },
+    {
+      "case": 30,
+      "feature": "evidence_2ch",
+      "guard": {
+        "enabled": false,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 1.0,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.5,
+        "noise": 0.85,
+        "fatformer": 0.2,
+        "spatial": 0.9
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7911680911680912,
+      "f1_diff": 0.02404152965715578,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_30/phase2_patha_results_20260217_140356.json"
+    },
+    {
+      "case": 31,
+      "feature": "risk52",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "hybrid_only",
+        "min_val_gain": 0.005,
+        "max_route_rate": 0.5,
+        "enforce_non_regression": true,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.5,
+        "noise": 0.85,
+        "fatformer": 0.2,
+        "spatial": 0.9
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "hybrid_guard_gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7671265615109354,
+      "f1_diff": 0.0,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_31/phase2_patha_results_20260217_140358.json"
+    },
+    {
+      "case": 32,
+      "feature": "risk52",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 0.7,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.5,
+        "noise": 0.85,
+        "fatformer": 0.2,
+        "spatial": 0.9
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7900621429601621,
+      "f1_diff": 0.022935581449226694,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_32/phase2_patha_results_20260217_140359.json"
+    },
+    {
+      "case": 33,
+      "feature": "risk52",
+      "guard": {
+        "enabled": false,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 1.0,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.5,
+        "noise": 0.85,
+        "fatformer": 0.2,
+        "spatial": 0.9
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7900621429601621,
+      "f1_diff": 0.022935581449226694,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_33/phase2_patha_results_20260217_140401.json"
+    },
+    {
+      "case": 34,
+      "feature": "enhanced36",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "hybrid_only",
+        "min_val_gain": 0.005,
+        "max_route_rate": 0.5,
+        "enforce_non_regression": true,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.5,
+        "noise": 0.85,
+        "fatformer": 0.2,
+        "spatial": 0.9
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "hybrid_guard_gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7671265615109354,
+      "f1_diff": 0.0,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_34/phase2_patha_results_20260217_140402.json"
+    },
+    {
+      "case": 35,
+      "feature": "enhanced36",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 0.7,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.5,
+        "noise": 0.85,
+        "fatformer": 0.2,
+        "spatial": 0.9
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "hybrid_guard_gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7671265615109354,
+      "f1_diff": 0.0,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_35/phase2_patha_results_20260217_140404.json"
+    },
+    {
+      "case": 36,
+      "feature": "enhanced36",
+      "guard": {
+        "enabled": false,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 1.0,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.5,
+        "noise": 0.85,
+        "fatformer": 0.2,
+        "spatial": 0.9
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7537037037037037,
+      "f1_diff": -0.013422857807231736,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_36/phase2_patha_results_20260217_140405.json"
+    }
+  ],
+  "top10": [
+    {
+      "case": 2,
+      "feature": "evidence_2ch",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 0.7,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.85,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7911680911680912,
+      "f1_diff": 0.02404152965715578,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_02/phase2_patha_results_20260217_140312.json"
+    },
+    {
+      "case": 3,
+      "feature": "evidence_2ch",
+      "guard": {
+        "enabled": false,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 1.0,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.85,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7911680911680912,
+      "f1_diff": 0.02404152965715578,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_03/phase2_patha_results_20260217_140314.json"
+    },
+    {
+      "case": 11,
+      "feature": "evidence_2ch",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 0.7,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7911680911680912,
+      "f1_diff": 0.02404152965715578,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_11/phase2_patha_results_20260217_140326.json"
+    },
+    {
+      "case": 12,
+      "feature": "evidence_2ch",
+      "guard": {
+        "enabled": false,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 1.0,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7911680911680912,
+      "f1_diff": 0.02404152965715578,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_12/phase2_patha_results_20260217_140328.json"
+    },
+    {
+      "case": 20,
+      "feature": "evidence_2ch",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 0.7,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.6,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7911680911680912,
+      "f1_diff": 0.02404152965715578,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_20/phase2_patha_results_20260217_140340.json"
+    },
+    {
+      "case": 21,
+      "feature": "evidence_2ch",
+      "guard": {
+        "enabled": false,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 1.0,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.6,
+        "noise": 0.8,
+        "fatformer": 0.3,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7911680911680912,
+      "f1_diff": 0.02404152965715578,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_21/phase2_patha_results_20260217_140342.json"
+    },
+    {
+      "case": 29,
+      "feature": "evidence_2ch",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 0.7,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.5,
+        "noise": 0.85,
+        "fatformer": 0.2,
+        "spatial": 0.9
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7911680911680912,
+      "f1_diff": 0.02404152965715578,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_29/phase2_patha_results_20260217_140355.json"
+    },
+    {
+      "case": 30,
+      "feature": "evidence_2ch",
+      "guard": {
+        "enabled": false,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 1.0,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.5,
+        "noise": 0.85,
+        "fatformer": 0.2,
+        "spatial": 0.9
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7911680911680912,
+      "f1_diff": 0.02404152965715578,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_30/phase2_patha_results_20260217_140356.json"
+    },
+    {
+      "case": 5,
+      "feature": "risk52",
+      "guard": {
+        "enabled": true,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 0.7,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.85,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7900621429601621,
+      "f1_diff": 0.022935581449226694,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_05/phase2_patha_results_20260217_140317.json"
+    },
+    {
+      "case": 6,
+      "feature": "risk52",
+      "guard": {
+        "enabled": false,
+        "selection_scope": "all",
+        "min_val_gain": 0.0,
+        "max_route_rate": 1.0,
+        "enforce_non_regression": false,
+        "non_regression_tolerance": 0.0
+      },
+      "trust": {
+        "frequency": 0.85,
+        "noise": 0.8,
+        "fatformer": 0.85,
+        "spatial": 0.85
+      },
+      "phase1_best": "gradient_boosting",
+      "phase2_best": "gradient_boosting",
+      "phase1_best_f1": 0.7671265615109354,
+      "phase2_best_f1": 0.7900621429601621,
+      "f1_diff": 0.022935581449226694,
+      "mcnemar_p": 1.0,
+      "result_path": "experiments/results/tune_levers_20260217/case_06/phase2_patha_results_20260217_140319.json"
+    }
+  ]
+}

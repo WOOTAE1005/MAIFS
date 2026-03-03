@@ -6,6 +6,10 @@
 - `DAAC_RESEARCH_PLAN.md`
 - `MAIFS_TECHNICAL_THEORY.md`
 - `PHASE2_LOSS_AVERSE_RUNBOOK.md`
+- `CURRENT_ARCHITECTURE_SPEC.md` (current runtime SSOT)
+- `OPERATIONS_RISK_PRIORITIES.md` (operations risk priority)
+- `PATHA_MIN_RUNBOOK.md` (command-first minimal runbook)
+- `PAPER_TABLE_20260303.md` (paper-ready result tables from latest multi-dataset run)
 
 ## Tech Stack & Constraints
 

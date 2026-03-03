@@ -72,11 +72,11 @@ router:
     enabled: true
     score_mode: top2_margin
     n_thresholds: 33
-    min_val_gain: 0.005
+    min_val_gain: 0.0
     min_phase2_val_gain: 0.00
-    max_route_rate: 0.50
-    selection_scope: hybrid_only
-    enforce_non_regression: true
+    max_route_rate: 0.70
+    selection_scope: all
+    enforce_non_regression: false
     non_regression_tolerance: 0.0
 models:
   logistic_regression:

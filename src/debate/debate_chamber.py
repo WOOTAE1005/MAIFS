@@ -220,8 +220,14 @@ class DebateChamber:
         """
         토론 메시지를 바탕으로 응답 업데이트
 
-        다른 에이전트의 강력한 증거에 의해 신뢰도가 조정될 수 있음
+        다른 에이전트의 강력한 증거에 의해 신뢰도가 조정될 수 있음.
+
+        주의:
+            trust는 최종 COBRA 합의에서 한 번만 반영한다.
+            토론 단계에서 challenger trust를 추가 곱하지 않아
+            trust 이중 반영을 방지한다.
         """
+        _ = trust_scores  # trust weighting is intentionally deferred to COBRA aggregate.
         updated = {}
 
         for name, response in responses.items():
@@ -234,13 +240,12 @@ class DebateChamber:
                 )
             ]
 
-            # 반론의 강도에 따라 신뢰도 조정
+            # 반론의 강도에 따라 confidence 조정.
+            # trust 가중은 최종 합의(COBRA)에서만 수행한다.
             confidence_delta = 0.0
             for challenge in challenges:
-                challenger_trust = trust_scores.get(challenge.agent_name, 0.5)
-                # 신뢰도 높은 에이전트의 반론은 더 큰 영향
                 if len(challenge.evidence) > len(response.arguments):
-                    confidence_delta -= 0.05 * challenger_trust
+                    confidence_delta -= 0.05
 
             # 새 신뢰도 적용
             new_confidence = max(0.1, min(1.0, response.confidence + confidence_delta))

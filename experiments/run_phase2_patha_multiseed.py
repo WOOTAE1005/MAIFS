@@ -262,6 +262,25 @@ def main() -> None:
         mb = best_cmp.get("mcnemar_b")
         mc = best_cmp.get("mcnemar_c")
         mn = best_cmp.get("n_test_samples")
+        case3 = result.get("three_case_study", {})
+        case3_cases = case3.get("cases", {}) if isinstance(case3, dict) else {}
+
+        case3_payload: Dict[str, float] = {}
+        cobra_case = case3_cases.get("cobra_only", {})
+        daac_case = case3_cases.get("daac_only", {})
+        fused_case = case3_cases.get("cobra_plus_daac", {})
+        if cobra_case and daac_case and fused_case:
+            cobra_case_f1 = float(cobra_case.get("macro_f1", 0.0))
+            daac_case_f1 = float(daac_case.get("macro_f1", 0.0))
+            fused_case_f1 = float(fused_case.get("macro_f1", 0.0))
+            case3_payload = {
+                "cobra_only_f1": cobra_case_f1,
+                "daac_only_f1": daac_case_f1,
+                "cobra_plus_daac_f1": fused_case_f1,
+                "daac_minus_cobra_f1": daac_case_f1 - cobra_case_f1,
+                "fusion_minus_cobra_f1": fused_case_f1 - cobra_case_f1,
+                "fusion_minus_daac_f1": fused_case_f1 - daac_case_f1,
+            }
 
         run = {
             "seed": seed,
@@ -287,11 +306,20 @@ def main() -> None:
             "artifacts": result.get("artifacts", {}),
             "result_path": result.get("result_path", ""),
         }
+        if case3_payload:
+            run["case3"] = case3_payload
         runs.append(run)
-        print(
+        log_line = (
             f"[MultiSeed] done seed={seed} "
             f"p1={p1_f1:.4f} p2={p2_f1:.4f} diff={run['f1_diff']:+.4f}"
         )
+        if case3_payload:
+            log_line += (
+                f" | cobra={case3_payload['cobra_only_f1']:.4f}"
+                f" daac={case3_payload['daac_only_f1']:.4f}"
+                f" fusion={case3_payload['cobra_plus_daac_f1']:.4f}"
+            )
+        print(log_line)
 
     f1_diffs = np.array([r["f1_diff"] for r in runs], dtype=float)
     p1_vals = np.array([r["phase1_best_f1"] for r in runs], dtype=float)
@@ -338,6 +366,46 @@ def main() -> None:
                 "pooled_mcnemar_significant": bool(pval < 0.05),
             }
         )
+
+    runs_with_case3 = [r for r in runs if "case3" in r]
+    if runs_with_case3:
+        cobra_vals = np.array([float(r["case3"]["cobra_only_f1"]) for r in runs_with_case3], dtype=float)
+        daac_vals = np.array([float(r["case3"]["daac_only_f1"]) for r in runs_with_case3], dtype=float)
+        fusion_vals = np.array([float(r["case3"]["cobra_plus_daac_f1"]) for r in runs_with_case3], dtype=float)
+        daac_minus_cobra = daac_vals - cobra_vals
+        fusion_minus_cobra = fusion_vals - cobra_vals
+        fusion_minus_daac = fusion_vals - daac_vals
+
+        summary["aggregate_case3"] = {
+            "n_runs": int(len(runs_with_case3)),
+            "cobra_only_f1_mean": float(np.mean(cobra_vals)),
+            "cobra_only_f1_std": float(np.std(cobra_vals, ddof=0)),
+            "daac_only_f1_mean": float(np.mean(daac_vals)),
+            "daac_only_f1_std": float(np.std(daac_vals, ddof=0)),
+            "cobra_plus_daac_f1_mean": float(np.mean(fusion_vals)),
+            "cobra_plus_daac_f1_std": float(np.std(fusion_vals, ddof=0)),
+            "daac_minus_cobra_mean": float(np.mean(daac_minus_cobra)),
+            "daac_minus_cobra_std": float(np.std(daac_minus_cobra, ddof=0)),
+            "daac_minus_cobra_positive_count": int(np.sum(daac_minus_cobra > 0.0)),
+            "daac_minus_cobra_sign_test_pvalue": _exact_sign_test_two_sided(
+                int(np.sum(daac_minus_cobra > 0.0)),
+                int(np.sum(daac_minus_cobra < 0.0)),
+            ),
+            "fusion_minus_cobra_mean": float(np.mean(fusion_minus_cobra)),
+            "fusion_minus_cobra_std": float(np.std(fusion_minus_cobra, ddof=0)),
+            "fusion_minus_cobra_positive_count": int(np.sum(fusion_minus_cobra > 0.0)),
+            "fusion_minus_cobra_sign_test_pvalue": _exact_sign_test_two_sided(
+                int(np.sum(fusion_minus_cobra > 0.0)),
+                int(np.sum(fusion_minus_cobra < 0.0)),
+            ),
+            "fusion_minus_daac_mean": float(np.mean(fusion_minus_daac)),
+            "fusion_minus_daac_std": float(np.std(fusion_minus_daac, ddof=0)),
+            "fusion_minus_daac_positive_count": int(np.sum(fusion_minus_daac > 0.0)),
+            "fusion_minus_daac_sign_test_pvalue": _exact_sign_test_two_sided(
+                int(np.sum(fusion_minus_daac > 0.0)),
+                int(np.sum(fusion_minus_daac < 0.0)),
+            ),
+        }
 
     if args.summary_out:
         out_path = Path(args.summary_out)

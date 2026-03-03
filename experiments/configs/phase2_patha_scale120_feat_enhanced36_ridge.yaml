@@ -149,5 +149,8 @@ protocol:
       max_cvar_downside: 0.02
       max_worst_case_loss: 0.04
       downside_cvar_alpha: 0.1
+case_study:
+  cobra_plus_daac:
+    cobra_weight: 0.5
 output:
   save_dir: experiments/results/phase2_patha_scale120_feat_enhanced36_ridge
