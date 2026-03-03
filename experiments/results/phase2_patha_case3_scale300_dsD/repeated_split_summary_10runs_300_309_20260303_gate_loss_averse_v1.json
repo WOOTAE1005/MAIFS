@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-03T11:09:56.593699",
+  "timestamp": "2026-03-03T14:16:45.622709",
   "config": {
     "collector": {
       "seed": 42,
@@ -40,7 +40,20 @@
         "fatformer": 0.85,
         "spatial": 0.85
       },
-      "algorithm": "drwa"
+      "algorithm": "drwa",
+      "selection": {
+        "mode": "val_best",
+        "candidate_algorithms": [
+          "rot",
+          "drwa",
+          "avga",
+          "auto"
+        ],
+        "candidate_trust_profiles": [
+          "static",
+          "metrics_derived"
+        ]
+      }
     },
     "router": {
       "oracle": {

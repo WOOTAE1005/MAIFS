@@ -18,7 +18,7 @@ import warnings
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import yaml
@@ -36,6 +36,7 @@ from src.meta.collector import (
 )
 from src.meta.evaluate import MetaEvaluator
 from src.meta.features import MetaFeatureExtractor
+from src.meta.simulator import AGENT_NAMES, TRUE_LABELS
 from src.meta.router import (
     MetaRouter,
     MetaRouterConfig,
@@ -43,6 +44,7 @@ from src.meta.router import (
     OracleWeightConfig,
 )
 from src.meta.trainer import MetaTrainer
+from configs.trust import derive_trust_from_metrics
 
 MODEL_NAMES = ("logistic_regression", "gradient_boosting", "mlp")
 
@@ -74,6 +76,234 @@ def _safe_macro_f1(y_t: np.ndarray, y_p: np.ndarray) -> float:
             zero_division=0,
         )
     )
+
+
+def _safe_balanced_accuracy(y_t: np.ndarray, y_p: np.ndarray) -> float:
+    if y_t.size == 0:
+        return 0.0
+    return float(balanced_accuracy_score(y_t, y_p))
+
+
+def _verdict_to_label_index(verdict: str) -> int:
+    v = str(verdict)
+    if v in TRUE_LABELS:
+        return int(TRUE_LABELS.index(v))
+    return 0
+
+
+def _compute_agent_train_metrics(train_data: List[Any]) -> Dict[str, Dict[str, float]]:
+    """train split의 agent 출력으로 trust 파생용 메트릭을 계산한다."""
+    if not train_data:
+        return {}
+
+    y_true = np.array([_verdict_to_label_index(s.true_label) for s in train_data], dtype=np.int64)
+    metrics: Dict[str, Dict[str, float]] = {}
+    for agent in AGENT_NAMES:
+        y_pred = np.array(
+            [_verdict_to_label_index(s.agent_verdicts.get(agent, "uncertain")) for s in train_data],
+            dtype=np.int64,
+        )
+        metrics[agent] = {
+            "macro_f1": _safe_macro_f1(y_true, y_pred),
+            "balanced_accuracy": _safe_balanced_accuracy(y_true, y_pred),
+        }
+    return metrics
+
+
+def _select_cobra_baseline_for_case3(
+    *,
+    cobra_cfg: Dict[str, Any],
+    train_data: List[Any],
+    val_data: List[Any],
+    y_val: np.ndarray,
+    test_data: List[Any],
+    y_test: np.ndarray,
+    evaluator: MetaEvaluator,
+) -> Dict[str, Any]:
+    """
+    COBRA baseline selection.
+
+    - mode=static  : config의 algorithm/trust를 그대로 사용
+    - mode=val_best: 후보(algo x trust_profile) 중 val macro-F1 최고 조합 선택
+    """
+    configured_algorithm = str(cobra_cfg.get("algorithm", "drwa")).strip().lower()
+    static_model = COBRABaseline(
+        trust_scores=cobra_cfg.get("trust_scores"),
+        algorithm=configured_algorithm,
+    )
+    y_val_pred_static = static_model.predict(val_data)
+    y_pred_static = static_model.predict(test_data)
+    y_proba_static = static_model.predict_proba(test_data)
+    eval_static = evaluator.evaluate(y_test, y_pred_static, y_proba_static, "cobra_static")
+    static_val_macro = _safe_macro_f1(y_val, y_val_pred_static)
+    static_val_bal = _safe_balanced_accuracy(y_val, y_val_pred_static)
+
+    selection_cfg = cobra_cfg.get("selection", {}) if isinstance(cobra_cfg, dict) else {}
+    mode = str(selection_cfg.get("mode", "static")).strip().lower()
+
+    if mode != "val_best":
+        return {
+            "selected": {
+                "algorithm": configured_algorithm,
+                "trust_profile": "static",
+                "trust_scores": dict(static_model.trust_scores),
+                "y_pred": y_pred_static,
+                "y_proba": y_proba_static,
+                "eval": eval_static,
+                "val_macro_f1": float(static_val_macro),
+                "val_balanced_accuracy": float(static_val_bal),
+            },
+            "static": {
+                "algorithm": configured_algorithm,
+                "trust_scores": dict(static_model.trust_scores),
+                "eval": eval_static,
+                "val_macro_f1": float(static_val_macro),
+                "val_balanced_accuracy": float(static_val_bal),
+            },
+            "selection": {
+                "mode": "static",
+                "configured_algorithm": configured_algorithm,
+                "selected_algorithm": configured_algorithm,
+                "selected_trust_profile": "static",
+                "candidate_algorithms": [configured_algorithm],
+                "candidate_trust_profiles": ["static"],
+                "agent_metrics_train": {},
+                "candidate_results": [
+                    {
+                        "algorithm": configured_algorithm,
+                        "trust_profile": "static",
+                        "val_macro_f1": float(static_val_macro),
+                        "val_balanced_accuracy": float(static_val_bal),
+                        "test_macro_f1": float(eval_static.macro_f1),
+                        "test_balanced_accuracy": float(eval_static.balanced_accuracy),
+                    }
+                ],
+            },
+        }
+
+    raw_algos = selection_cfg.get("candidate_algorithms", ["rot", "drwa", "avga", "auto"])
+    if isinstance(raw_algos, str):
+        candidate_algorithms = [raw_algos.strip().lower()]
+    elif isinstance(raw_algos, list):
+        candidate_algorithms = [str(x).strip().lower() for x in raw_algos if str(x).strip()]
+    else:
+        candidate_algorithms = ["rot", "drwa", "avga", "auto"]
+    if not candidate_algorithms:
+        candidate_algorithms = [configured_algorithm]
+    candidate_algorithms = list(dict.fromkeys(candidate_algorithms))
+
+    raw_profiles = selection_cfg.get("candidate_trust_profiles", ["static", "metrics_derived"])
+    if isinstance(raw_profiles, str):
+        candidate_profiles = [raw_profiles.strip().lower()]
+    elif isinstance(raw_profiles, list):
+        candidate_profiles = [str(x).strip().lower() for x in raw_profiles if str(x).strip()]
+    else:
+        candidate_profiles = ["static", "metrics_derived"]
+    if not candidate_profiles:
+        candidate_profiles = ["static"]
+    candidate_profiles = list(dict.fromkeys(candidate_profiles))
+
+    trust_profiles: Dict[str, Dict[str, float]] = {
+        "static": dict(static_model.trust_scores),
+    }
+    agent_metrics_train: Dict[str, Dict[str, float]] = {}
+    if "metrics_derived" in candidate_profiles:
+        agent_metrics_train = _compute_agent_train_metrics(train_data)
+        trust_profiles["metrics_derived"] = derive_trust_from_metrics(agent_metrics_train)
+
+    candidate_results: List[Dict[str, Any]] = []
+    selected_payload: Dict[str, Any] | None = None
+    best_val_macro = -1.0
+    best_val_bal = -1.0
+    tol = 1e-12
+
+    for profile_name in candidate_profiles:
+        trust_override = trust_profiles.get(profile_name)
+        if trust_override is None:
+            continue
+        for algo in candidate_algorithms:
+            model = COBRABaseline(
+                trust_scores=trust_override,
+                algorithm=algo,
+            )
+            y_val_pred = model.predict(val_data)
+            val_macro = _safe_macro_f1(y_val, y_val_pred)
+            val_bal = _safe_balanced_accuracy(y_val, y_val_pred)
+
+            y_pred = model.predict(test_data)
+            y_proba = model.predict_proba(test_data)
+            eval_test = evaluator.evaluate(y_test, y_pred, y_proba, f"cobra_{algo}_{profile_name}")
+
+            candidate_results.append(
+                {
+                    "algorithm": algo,
+                    "trust_profile": profile_name,
+                    "val_macro_f1": float(val_macro),
+                    "val_balanced_accuracy": float(val_bal),
+                    "test_macro_f1": float(eval_test.macro_f1),
+                    "test_balanced_accuracy": float(eval_test.balanced_accuracy),
+                }
+            )
+
+            is_better = val_macro > best_val_macro + tol
+            tie_and_better_bal = abs(val_macro - best_val_macro) <= tol and val_bal > best_val_bal + tol
+            if selected_payload is None or is_better or tie_and_better_bal:
+                selected_payload = {
+                    "algorithm": algo,
+                    "trust_profile": profile_name,
+                    "trust_scores": dict(model.trust_scores),
+                    "y_pred": y_pred,
+                    "y_proba": y_proba,
+                    "eval": eval_test,
+                    "val_macro_f1": float(val_macro),
+                    "val_balanced_accuracy": float(val_bal),
+                }
+                best_val_macro = float(val_macro)
+                best_val_bal = float(val_bal)
+
+    if selected_payload is None:
+        selected_payload = {
+            "algorithm": configured_algorithm,
+            "trust_profile": "static",
+            "trust_scores": dict(static_model.trust_scores),
+            "y_pred": y_pred_static,
+            "y_proba": y_proba_static,
+            "eval": eval_static,
+            "val_macro_f1": float(static_val_macro),
+            "val_balanced_accuracy": float(static_val_bal),
+        }
+        if not candidate_results:
+            candidate_results.append(
+                {
+                    "algorithm": configured_algorithm,
+                    "trust_profile": "static",
+                    "val_macro_f1": float(static_val_macro),
+                    "val_balanced_accuracy": float(static_val_bal),
+                    "test_macro_f1": float(eval_static.macro_f1),
+                    "test_balanced_accuracy": float(eval_static.balanced_accuracy),
+                }
+            )
+
+    return {
+        "selected": selected_payload,
+        "static": {
+            "algorithm": configured_algorithm,
+            "trust_scores": dict(static_model.trust_scores),
+            "eval": eval_static,
+            "val_macro_f1": float(static_val_macro),
+            "val_balanced_accuracy": float(static_val_bal),
+        },
+        "selection": {
+            "mode": "val_best",
+            "configured_algorithm": configured_algorithm,
+            "selected_algorithm": str(selected_payload["algorithm"]),
+            "selected_trust_profile": str(selected_payload["trust_profile"]),
+            "candidate_algorithms": candidate_algorithms,
+            "candidate_trust_profiles": [p for p in candidate_profiles if p in trust_profiles],
+            "agent_metrics_train": agent_metrics_train,
+            "candidate_results": candidate_results,
+        },
+    }
 
 
 def _router_guard_score(
@@ -559,13 +789,35 @@ def run_phase2_patha(config: Dict) -> Dict:
     print(evaluator.format_result(eval_mv))
 
     cobra_cfg = config.get("cobra", {})
-    cobra = COBRABaseline(
-        trust_scores=cobra_cfg.get("trust_scores"),
-        algorithm=str(cobra_cfg.get("algorithm", "drwa")),
+    cobra_selection = _select_cobra_baseline_for_case3(
+        cobra_cfg=cobra_cfg,
+        train_data=train_data,
+        val_data=val_data,
+        y_val=y_val,
+        test_data=test_data,
+        y_test=y_test,
+        evaluator=evaluator,
     )
-    y_pred_cobra = cobra.predict(test_data)
-    y_proba_cobra = cobra.predict_proba(test_data)
-    eval_cobra = evaluator.evaluate(y_test, y_pred_cobra, y_proba_cobra, "cobra")
+
+    cobra_selected = cobra_selection["selected"]
+    cobra_static = cobra_selection["static"]
+    cobra_selection_meta = cobra_selection["selection"]
+
+    y_pred_cobra = cobra_selected["y_pred"]
+    y_proba_cobra = cobra_selected["y_proba"]
+    eval_cobra = cobra_selected["eval"]
+    eval_cobra_static = cobra_static["eval"]
+
+    if cobra_selection_meta.get("mode") == "val_best":
+        print(
+            "  COBRA selection: "
+            f"algo={cobra_selection_meta.get('selected_algorithm')} "
+            f"trust_profile={cobra_selection_meta.get('selected_trust_profile')} "
+            f"val_macro_f1={float(cobra_selected['val_macro_f1']):.4f} "
+            f"(static_val={float(cobra_static['val_macro_f1']):.4f})"
+        )
+        print(evaluator.format_result(eval_cobra_static))
+
     print(evaluator.format_result(eval_cobra))
 
     # ---------------------------------------------------------------
@@ -978,6 +1230,11 @@ def run_phase2_patha(config: Dict) -> Dict:
 
     case3_results = {
         "config": {
+            "cobra_only": {
+                "selected_algorithm": str(cobra_selected["algorithm"]),
+                "selected_trust_profile": str(cobra_selected["trust_profile"]),
+                "selection_mode": str(cobra_selection_meta.get("mode", "static")),
+            },
             "cobra_plus_daac": {
                 "cobra_weight": cobra_weight,
                 "daac_model_key": best_p2,
@@ -1100,6 +1357,22 @@ def run_phase2_patha(config: Dict) -> Dict:
                 "ece": eval_cobra.ece,
                 "brier": eval_cobra.brier,
                 "per_class_f1": eval_cobra.per_class_f1,
+                "selected_algorithm": str(cobra_selected["algorithm"]),
+                "selected_trust_profile": str(cobra_selected["trust_profile"]),
+                "selected_val_macro_f1": float(cobra_selected["val_macro_f1"]),
+                "selected_val_balanced_accuracy": float(cobra_selected["val_balanced_accuracy"]),
+                "selection": cobra_selection_meta,
+                "static_reference": {
+                    "algorithm": str(cobra_static["algorithm"]),
+                    "macro_f1": float(eval_cobra_static.macro_f1),
+                    "balanced_accuracy": float(eval_cobra_static.balanced_accuracy),
+                    "auroc": float(eval_cobra_static.auroc),
+                    "ece": float(eval_cobra_static.ece),
+                    "brier": float(eval_cobra_static.brier),
+                    "per_class_f1": eval_cobra_static.per_class_f1,
+                    "val_macro_f1": float(cobra_static["val_macro_f1"]),
+                    "val_balanced_accuracy": float(cobra_static["val_balanced_accuracy"]),
+                },
             },
         },
         "router": {

@@ -9,6 +9,7 @@ Updated: 2026-03-03
 - Repeats: split seed 300..309 (`n=10` per composition)
 - Metrics: Macro-F1 (mean±std)
 - p-value: two-sided exact sign test
+- COBRA-only: val-best selection (`algorithm in {rot, drwa, avga, auto}` x `trust profile in {static, metrics_derived}`)
 
 Source JSON:
 - `experiments/results/phase2_patha_case3_multidata/multi_dataset_case3_comparison_20260303.json`
@@ -17,11 +18,11 @@ Source JSON:
 
 | Dataset | COBRA only | DAAC only | COBRA+DAAC | p (DAAC vs COBRA) | p (Fusion vs DAAC) |
 |---|---:|---:|---:|---:|---:|
-| DS-A (Au/Tp/BigGAN-ai) | 0.265±0.018 | 0.835±0.027 | 0.764±0.051 | 0.00195 | 0.00195 |
-| DS-B (Nature/Tp/BigGAN-ai) | 0.267±0.017 | 0.867±0.019 | 0.765±0.030 | 0.00195 | 0.00195 |
-| DS-C (Au/IMD/BigGAN-ai) | 0.219±0.014 | 0.898±0.022 | 0.829±0.035 | 0.00195 | 0.00195 |
-| DS-D (Nature/IMD/BigGAN-ai) | 0.217±0.013 | 0.863±0.014 | 0.799±0.026 | 0.00195 | 0.00195 |
-| **Pooled (40 runs)** | **0.242±0.029** | **0.866±0.031** | **0.789±0.045** | **1.82e-12** | **1.82e-12** |
+| DS-A (Au/Tp/BigGAN-ai) | 0.277±0.016 | 0.835±0.027 | 0.801±0.028 | 0.00195 | 0.00195 |
+| DS-B (Nature/Tp/BigGAN-ai) | 0.274±0.017 | 0.867±0.019 | 0.788±0.041 | 0.00195 | 0.00195 |
+| DS-C (Au/IMD/BigGAN-ai) | 0.303±0.019 | 0.898±0.022 | 0.842±0.022 | 0.00195 | 0.00195 |
+| DS-D (Nature/IMD/BigGAN-ai) | 0.300±0.021 | 0.863±0.014 | 0.822±0.016 | 0.00195 | 0.00195 |
+| **Pooled (40 runs)** | **0.288±0.022** | **0.866±0.031** | **0.813±0.035** | **1.82e-12** | **1.82e-12** |
 
 ## Table 2. Best Phase2 vs Best Phase1 (F1 diff, mean±std)
 

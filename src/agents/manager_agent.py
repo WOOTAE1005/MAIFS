@@ -105,6 +105,8 @@ class ManagerAgent(BaseAgent):
         consensus_algorithm: str = "drwa",
         enable_debate: bool = True,
         debate_threshold: float = 0.3,
+        trust_scores: Optional[Dict[str, float]] = None,
+        trust_metrics: Optional[Dict[str, Dict[str, float]]] = None,
     ):
         super().__init__(
             name="Manager Agent (총괄 관리자)",
@@ -122,7 +124,10 @@ class ManagerAgent(BaseAgent):
         }
 
         # 에이전트별 신뢰도 (COBRA용, configs/trust.py SSOT)
-        self.agent_trust: Dict[str, float] = resolve_trust()
+        self.agent_trust: Dict[str, float] = resolve_trust(
+            trust_scores,
+            metrics_override=trust_metrics,
+        )
         self.consensus_algorithm = consensus_algorithm
         self.enable_debate = enable_debate
         self.debate_threshold = debate_threshold
@@ -195,7 +200,7 @@ class ManagerAgent(BaseAgent):
         consensus_result = self.consensus_engine.aggregate(
             responses,
             self.agent_trust,
-            algorithm=self.consensus_algorithm,
+            algorithm=None if self.consensus_algorithm == "auto" else self.consensus_algorithm,
         )
 
         debate_result: Optional[DebateResult] = None
@@ -252,7 +257,7 @@ class ManagerAgent(BaseAgent):
         consensus = self.consensus_engine.aggregate(
             responses,
             self.agent_trust,
-            algorithm=self.consensus_algorithm,
+            algorithm=None if self.consensus_algorithm == "auto" else self.consensus_algorithm,
         )
         return {
             "weighted_confidence": consensus.confidence,

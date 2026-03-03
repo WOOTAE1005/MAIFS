@@ -45,9 +45,9 @@ def main():
     analyze_parser.add_argument(
         "--algorithm",
         type=str,
-        choices=["rot", "drwa", "avga"],
+        choices=["rot", "drwa", "avga", "auto"],
         default="drwa",
-        help="합의 알고리즘 (기본: drwa)"
+        help="합의 알고리즘 (기본: drwa, auto=상황별 자동 선택)"
     )
     analyze_parser.add_argument(
         "--device",

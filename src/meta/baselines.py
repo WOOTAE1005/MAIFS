@@ -2,7 +2,7 @@
 베이스라인 합의 방법
 
 1. MajorityVoteBaseline: 단순 다수결 (동률 시 UNCERTAIN → 최다 confidence로 결정)
-2. COBRABaseline: 기존 COBRA 고정 가중 합의 래퍼
+2. COBRABaseline: 런타임 COBRAConsensus(RoT/DRWA/AVGA) 재사용 래퍼
 """
 import numpy as np
 from collections import Counter
@@ -11,9 +11,19 @@ from typing import Dict, List, Optional
 from .simulator import SimulatedOutput, AGENT_NAMES, TRUE_LABELS, VERDICTS
 from configs.trust import DEFAULT_TRUST as _DEFAULT_TRUST
 from configs.trust import resolve_trust
+from ..tools.base_tool import Verdict
+from ..agents.base_agent import AgentResponse, AgentRole
+from ..consensus.cobra import COBRAConsensus
 
 # MAIFS 기본 trust scores — configs/trust.py SSOT에서 가져옴
 DEFAULT_TRUST_SCORES = dict(_DEFAULT_TRUST)
+
+_AGENT_ROLE_MAP = {
+    "frequency": AgentRole.FREQUENCY,
+    "noise": AgentRole.NOISE,
+    "fatformer": AgentRole.FATFORMER,
+    "spatial": AgentRole.SPATIAL,
+}
 
 
 class MajorityVoteBaseline:
@@ -66,8 +76,8 @@ class COBRABaseline:
     """
     COBRA 가중 합의 베이스라인 (래퍼)
 
-    MAIFS의 기존 COBRA 알고리즘을 시뮬레이션 데이터에 적용.
-    고정 trust score × confidence 가중 투표.
+    MAIFS 런타임과 동일한 COBRAConsensus(RoT/DRWA/AVGA)를
+    시뮬레이션 데이터에 적용한다.
     """
 
     def __init__(
@@ -78,36 +88,59 @@ class COBRABaseline:
         """
         Args:
             trust_scores: 에이전트별 고정 trust score
-            algorithm: COBRA 알고리즘 ("rot", "drwa", "avga")
+            algorithm: COBRA 알고리즘 ("rot", "drwa", "avga", "auto")
         """
         # YAML override가 있으면 trust.py의 키 검증/마이그레이션 정책을 적용한다.
         self.trust_scores = resolve_trust(trust_scores)
         self.algorithm = algorithm
+        self.consensus_engine = COBRAConsensus(default_algorithm="drwa")
+
+    def _to_agent_response(self, agent: str, sample: SimulatedOutput) -> AgentResponse:
+        """SimulatedOutput의 agent 출력 -> AgentResponse 변환."""
+        verdict_str = str(sample.agent_verdicts.get(agent, "uncertain")).lower()
+        confidence = float(sample.agent_confidences.get(agent, 0.5))
+
+        try:
+            verdict = Verdict(verdict_str)
+        except ValueError:
+            verdict = Verdict.UNCERTAIN
+
+        # DRWA 분산 휴리스틱용 최소 evidence 제공
+        ai_score = confidence if verdict == Verdict.AI_GENERATED else (1.0 - confidence)
+        evidence = {
+            "ai_generation_score": max(0.0, min(1.0, ai_score)),
+            "source": "simulated_baseline",
+        }
+
+        return AgentResponse(
+            agent_name=agent,
+            role=_AGENT_ROLE_MAP[agent],
+            verdict=verdict,
+            confidence=max(0.0, min(1.0, confidence)),
+            reasoning="",
+            evidence=evidence,
+            arguments=[],
+        )
+
+    def _aggregate_sample(self, sample: SimulatedOutput):
+        responses = {
+            agent: self._to_agent_response(agent, sample)
+            for agent in AGENT_NAMES
+        }
+        selected_algorithm = None if self.algorithm == "auto" else self.algorithm
+        return self.consensus_engine.aggregate(
+            responses=responses,
+            trust_scores=self.trust_scores,
+            algorithm=selected_algorithm,
+        )
 
     def predict_single(self, sample: SimulatedOutput) -> int:
         """단일 샘플 예측 → label index"""
-        # 판정별 가중 점수 계산
-        verdict_scores: Dict[str, float] = {}
-
-        for agent in AGENT_NAMES:
-            verdict = sample.agent_verdicts[agent]
-            confidence = sample.agent_confidences[agent]
-            trust = self.trust_scores.get(agent, 0.5)
-
-            weight = trust * confidence
-            verdict_scores[verdict] = verdict_scores.get(verdict, 0.0) + weight
-
-        # UNCERTAIN은 최종 출력에서 제외하고 남은 것 중 최대
-        real_scores = {
-            v: s for v, s in verdict_scores.items() if v in TRUE_LABELS
-        }
-
-        if not real_scores:
-            # 모두 uncertain
-            return 0  # 기본값: authentic
-
-        winner = max(real_scores, key=real_scores.get)
-        return TRUE_LABELS.index(winner)
+        result = self._aggregate_sample(sample)
+        verdict = result.final_verdict.value
+        if verdict not in TRUE_LABELS:
+            return 0
+        return TRUE_LABELS.index(verdict)
 
     def predict(self, samples: List[SimulatedOutput]) -> np.ndarray:
         """데이터셋 예측"""
@@ -117,17 +150,9 @@ class COBRABaseline:
         """데이터셋 확률 예측 (N, 3)"""
         proba = []
         for sample in samples:
-            verdict_scores = {}
-            for agent in AGENT_NAMES:
-                verdict = sample.agent_verdicts[agent]
-                confidence = sample.agent_confidences[agent]
-                trust = self.trust_scores.get(agent, 0.5)
-                weight = trust * confidence
-                verdict_scores[verdict] = verdict_scores.get(verdict, 0.0) + weight
-
-            # TRUE_LABELS 순서로 점수 추출
+            result = self._aggregate_sample(sample)
             scores = np.array([
-                verdict_scores.get(label, 0.0) for label in TRUE_LABELS
+                float(result.verdict_scores.get(label, 0.0)) for label in TRUE_LABELS
             ])
             total = scores.sum()
             if total > 0:

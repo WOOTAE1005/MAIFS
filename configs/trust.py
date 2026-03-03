@@ -17,6 +17,7 @@ Override 우선순위:
 """
 
 import warnings
+from typing import Dict, Optional
 
 # 런타임에서 실제로 사용되는 에이전트 키
 VALID_AGENT_KEYS: frozenset = frozenset({"frequency", "noise", "fatformer", "spatial"})
@@ -36,7 +37,112 @@ DEFAULT_TRUST: dict = {
 }
 
 
-def resolve_trust(yaml_override: "dict | None" = None) -> dict:
+DEFAULT_TRUST_METRIC_WEIGHTS: dict = {
+    "macro_f1": 0.45,
+    "balanced_accuracy": 0.45,
+    "calibration": 0.10,  # calibration = 1 - ECE
+}
+
+
+def _clip01(value: float) -> float:
+    return max(0.0, min(1.0, float(value)))
+
+
+def _normalize_metric_weights(metric_weights: Optional[Dict[str, float]]) -> Dict[str, float]:
+    """메트릭 가중치 정규화."""
+    if not metric_weights:
+        return dict(DEFAULT_TRUST_METRIC_WEIGHTS)
+
+    raw = {
+        "macro_f1": float(metric_weights.get("macro_f1", 0.0)),
+        "balanced_accuracy": float(metric_weights.get("balanced_accuracy", 0.0)),
+        "calibration": float(metric_weights.get("calibration", 0.0)),
+    }
+    total = sum(max(0.0, v) for v in raw.values())
+    if total <= 1e-10:
+        return dict(DEFAULT_TRUST_METRIC_WEIGHTS)
+    return {k: max(0.0, v) / total for k, v in raw.items()}
+
+
+def _validate_agent_keys(keys: set, label: str) -> None:
+    """trust 입력 키 검증 (deprecated는 경고 후 허용)."""
+    deprecated_present = keys & _DEPRECATED_KEYS
+    if deprecated_present:
+        warnings.warn(
+            f"Deprecated agent trust keys in {label}: {sorted(deprecated_present)}. "
+            f"These keys are ignored. Valid keys: {sorted(VALID_AGENT_KEYS)}",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+
+    unknown = keys - VALID_AGENT_KEYS - _DEPRECATED_KEYS
+    if unknown:
+        raise ValueError(
+            f"Unknown agent keys in {label}: {sorted(unknown)}. "
+            f"Valid keys: {sorted(VALID_AGENT_KEYS)}"
+        )
+
+
+def derive_trust_from_metrics(
+    agent_metrics: Optional[Dict[str, Dict[str, float]]] = None,
+    metric_weights: Optional[Dict[str, float]] = None,
+    default_ece: float = 0.25,
+    min_trust: float = 0.10,
+    max_trust: float = 0.95,
+) -> dict:
+    """
+    에이전트 성능 메트릭에서 trust score를 파생한다.
+
+    기대 입력 형식:
+        {
+            "frequency": {"macro_f1": 0.82, "balanced_accuracy": 0.84, "ece": 0.07},
+            "noise": {...},
+            ...
+        }
+    """
+    base = dict(DEFAULT_TRUST)
+    if not agent_metrics:
+        return base
+
+    if not isinstance(agent_metrics, dict):
+        raise TypeError(
+            f"agent_metrics must be dict[str, dict[str, float]] or None, got {type(agent_metrics)}"
+        )
+
+    _validate_agent_keys(set(agent_metrics.keys()), "agent_metrics")
+    weights = _normalize_metric_weights(metric_weights)
+    lo, hi = float(min_trust), float(max_trust)
+    if lo > hi:
+        lo, hi = hi, lo
+
+    for agent in VALID_AGENT_KEYS:
+        metrics = agent_metrics.get(agent)
+        if not isinstance(metrics, dict):
+            continue
+
+        # 누락 메트릭은 기존 기본 trust를 보수적 대체값으로 사용
+        f1 = _clip01(metrics.get("macro_f1", base[agent]))
+        bal = _clip01(metrics.get("balanced_accuracy", base[agent]))
+        ece = float(metrics.get("ece", default_ece))
+        if 1.0 < ece <= 100.0:
+            ece /= 100.0
+        cal = _clip01(1.0 - ece)
+
+        score = (
+            weights["macro_f1"] * f1
+            + weights["balanced_accuracy"] * bal
+            + weights["calibration"] * cal
+        )
+        base[agent] = max(lo, min(hi, float(score)))
+
+    return base
+
+
+def resolve_trust(
+    yaml_override: "dict | None" = None,
+    metrics_override: Optional[Dict[str, Dict[str, float]]] = None,
+    metric_weights: Optional[Dict[str, float]] = None,
+) -> dict:
     """
     Trust score 결정. override 시 부분 merge + 키 검증.
 
@@ -51,7 +157,10 @@ def resolve_trust(yaml_override: "dict | None" = None) -> dict:
     Raises:
         ValueError: VALID_AGENT_KEYS와 _DEPRECATED_KEYS 모두에 없는 미등록 키 포함 시
     """
-    base = dict(DEFAULT_TRUST)
+    base = derive_trust_from_metrics(
+        metrics_override,
+        metric_weights=metric_weights,
+    )
 
     if yaml_override is None:
         return base
@@ -59,24 +168,7 @@ def resolve_trust(yaml_override: "dict | None" = None) -> dict:
     if not isinstance(yaml_override, dict):
         raise TypeError(f"yaml_override must be dict or None, got {type(yaml_override)}")
 
-    # 1단계: deprecated 키 — 경고 후 조용히 제거
-    deprecated_present = set(yaml_override) & _DEPRECATED_KEYS
-    if deprecated_present:
-        warnings.warn(
-            f"Deprecated agent trust keys will be removed in a future release: "
-            f"{sorted(deprecated_present)}. These keys are ignored. "
-            f"Valid keys: {sorted(VALID_AGENT_KEYS)}",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-    # 완전히 미등록 키 — 즉시 hard fail
-    unknown = set(yaml_override) - VALID_AGENT_KEYS - _DEPRECATED_KEYS
-    if unknown:
-        raise ValueError(
-            f"Unknown agent keys in trust override: {sorted(unknown)}. "
-            f"Valid keys: {sorted(VALID_AGENT_KEYS)}"
-        )
+    _validate_agent_keys(set(yaml_override.keys()), "yaml_override")
 
     # deprecated 제외, valid만 부분 merge
     base.update({k: float(v) for k, v in yaml_override.items() if k in VALID_AGENT_KEYS})

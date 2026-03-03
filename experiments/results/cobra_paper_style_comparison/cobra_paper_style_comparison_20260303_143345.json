@@ -1,0 +1,125 @@
+{
+  "timestamp_utc": "20260303_143345",
+  "config": {
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "n_partitions": 15,
+    "n_trusted": 9,
+    "poison_flip_prob": 0.1,
+    "trusted_score": 0.85,
+    "untrusted_score": 0.45,
+    "max_sst2_train": 24000,
+    "max_imdb_train": 20000,
+    "max_imdb_test": 8000,
+    "max_hh_train_pairs": 30000,
+    "max_hh_test_pairs": 5000
+  },
+  "results": [
+    {
+      "dataset": "sst2",
+      "metric": "accuracy",
+      "cobra": {
+        "mean": 0.0,
+        "std": 0.0,
+        "runs": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "daac": {
+        "mean": 0.0,
+        "std": 0.0,
+        "runs": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "pvalue_daac_vs_cobra": NaN,
+      "selected_cobra_algorithm_counts": {
+        "rot": 2,
+        "drwa": 3,
+        "avga": 0
+      }
+    },
+    {
+      "dataset": "imdb",
+      "metric": "accuracy",
+      "cobra": {
+        "mean": 0.8282999999999999,
+        "std": 0.0031691875930591373,
+        "runs": [
+          0.831,
+          0.8285,
+          0.82725,
+          0.83125,
+          0.8235
+        ]
+      },
+      "daac": {
+        "mean": 0.8301000000000001,
+        "std": 0.002461262379349267,
+        "runs": [
+          0.83275,
+          0.832125,
+          0.827,
+          0.830375,
+          0.82825
+        ]
+      },
+      "pvalue_daac_vs_cobra": 0.17137974784541693,
+      "selected_cobra_algorithm_counts": {
+        "rot": 2,
+        "drwa": 2,
+        "avga": 1
+      }
+    },
+    {
+      "dataset": "hh_rlhf",
+      "metric": "correct_score_accuracy",
+      "cobra": {
+        "mean": 0.53608,
+        "std": 0.0026023066690918314,
+        "runs": [
+          0.5342,
+          0.5328,
+          0.5384,
+          0.5388,
+          0.5362
+        ]
+      },
+      "daac": {
+        "mean": 0.5246000000000001,
+        "std": 0.006865857557508735,
+        "runs": [
+          0.5188,
+          0.5354,
+          0.5208,
+          0.5274,
+          0.5206
+        ]
+      },
+      "pvalue_daac_vs_cobra": 0.034988482723202,
+      "selected_cobra_algorithm_counts": {
+        "rot": 0,
+        "drwa": 4,
+        "avga": 1
+      }
+    }
+  ],
+  "table_markdown": "| Dataset | Metric | COBRA | DAAC | p-value (DAAC vs COBRA) |\n|---|---:|---:|---:|---:|\n| sst2 | accuracy | 0.0000 \u00b1 0.0000 | 0.0000 \u00b1 0.0000 | nan |\n| imdb | accuracy | 0.8283 \u00b1 0.0032 | 0.8301 \u00b1 0.0025 | 0.1714 |\n| hh_rlhf | correct_score_accuracy | 0.5361 \u00b1 0.0026 | 0.5246 \u00b1 0.0069 | 0.03499 |\n| macro_avg | mean(metric) | 0.4548 \u00b1 0.4201 | 0.4516 \u00b1 0.4198 | 0.5191 |",
+  "notes": [
+    "Datasets and metric types follow COBRA paper protocol: SST-2/IMDB accuracy, HH-RLHF chosen-vs-rejected correctness.",
+    "Reward models are lightweight linear proxies to keep reproduction runtime practical."
+  ]
+}
