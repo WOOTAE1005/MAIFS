@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-03T10:56:44.292945",
+  "timestamp": "2026-03-03T14:09:40.630695",
   "mode": "PathA_fixed_dataset_repeated_split",
   "config": "experiments/configs/tmp_phase2_patha_case3_scale300_dsC.yaml",
   "precollected_jsonl": "experiments/results/phase2_patha_case3_scale300_dsC/patha_agent_outputs_20260303_105005.jsonl",
@@ -48,8 +48,8 @@
       "mcnemar_c": 1,
       "n_test_samples": 180,
       "significant": false,
-      "elapsed_seconds": 40.78306293487549,
-      "result_path": "experiments/results/phase2_patha_case3_scale300_dsC/phase2_patha_results_20260303_105050.json"
+      "elapsed_seconds": 41.231465339660645,
+      "result_path": "experiments/results/phase2_patha_case3_scale300_dsC/phase2_patha_results_20260303_140316.json"
     },
     {
       "split_strategy": "random",
@@ -66,8 +66,8 @@
       "mcnemar_c": 3,
       "n_test_samples": 180,
       "significant": false,
-      "elapsed_seconds": 39.69410157203674,
-      "result_path": "experiments/results/phase2_patha_case3_scale300_dsC/phase2_patha_results_20260303_105129.json"
+      "elapsed_seconds": 41.484683990478516,
+      "result_path": "experiments/results/phase2_patha_case3_scale300_dsC/phase2_patha_results_20260303_140358.json"
     },
     {
       "split_strategy": "random",
@@ -84,8 +84,8 @@
       "mcnemar_c": 2,
       "n_test_samples": 180,
       "significant": false,
-      "elapsed_seconds": 43.94965195655823,
-      "result_path": "experiments/results/phase2_patha_case3_scale300_dsC/phase2_patha_results_20260303_105213.json"
+      "elapsed_seconds": 45.46282958984375,
+      "result_path": "experiments/results/phase2_patha_case3_scale300_dsC/phase2_patha_results_20260303_140443.json"
     },
     {
       "split_strategy": "random",
@@ -102,8 +102,8 @@
       "mcnemar_c": 3,
       "n_test_samples": 180,
       "significant": false,
-      "elapsed_seconds": 49.70709562301636,
-      "result_path": "experiments/results/phase2_patha_case3_scale300_dsC/phase2_patha_results_20260303_105303.json"
+      "elapsed_seconds": 47.837292194366455,
+      "result_path": "experiments/results/phase2_patha_case3_scale300_dsC/phase2_patha_results_20260303_140531.json"
     },
     {
       "split_strategy": "random",
@@ -120,8 +120,8 @@
       "mcnemar_c": 2,
       "n_test_samples": 180,
       "significant": false,
-      "elapsed_seconds": 42.24004673957825,
-      "result_path": "experiments/results/phase2_patha_case3_scale300_dsC/phase2_patha_results_20260303_105345.json"
+      "elapsed_seconds": 40.27407240867615,
+      "result_path": "experiments/results/phase2_patha_case3_scale300_dsC/phase2_patha_results_20260303_140611.json"
     },
     {
       "split_strategy": "random",
@@ -138,8 +138,8 @@
       "mcnemar_c": 5,
       "n_test_samples": 180,
       "significant": false,
-      "elapsed_seconds": 27.804101705551147,
-      "result_path": "experiments/results/phase2_patha_case3_scale300_dsC/phase2_patha_results_20260303_105413.json"
+      "elapsed_seconds": 40.4104380607605,
+      "result_path": "experiments/results/phase2_patha_case3_scale300_dsC/phase2_patha_results_20260303_140652.json"
     },
     {
       "split_strategy": "random",
@@ -156,8 +156,8 @@
       "mcnemar_c": 4,
       "n_test_samples": 180,
       "significant": false,
-      "elapsed_seconds": 25.547590494155884,
-      "result_path": "experiments/results/phase2_patha_case3_scale300_dsC/phase2_patha_results_20260303_105439.json"
+      "elapsed_seconds": 40.520861864089966,
+      "result_path": "experiments/results/phase2_patha_case3_scale300_dsC/phase2_patha_results_20260303_140732.json"
     },
     {
       "split_strategy": "random",
@@ -174,8 +174,8 @@
       "mcnemar_c": 0,
       "n_test_samples": 180,
       "significant": false,
-      "elapsed_seconds": 41.80693984031677,
-      "result_path": "experiments/results/phase2_patha_case3_scale300_dsC/phase2_patha_results_20260303_105521.json"
+      "elapsed_seconds": 41.750837326049805,
+      "result_path": "experiments/results/phase2_patha_case3_scale300_dsC/phase2_patha_results_20260303_140814.json"
     },
     {
       "split_strategy": "random",
@@ -192,8 +192,8 @@
       "mcnemar_c": 0,
       "n_test_samples": 180,
       "significant": true,
-      "elapsed_seconds": 44.76284217834473,
-      "result_path": "experiments/results/phase2_patha_case3_scale300_dsC/phase2_patha_results_20260303_105606.json"
+      "elapsed_seconds": 46.67992877960205,
+      "result_path": "experiments/results/phase2_patha_case3_scale300_dsC/phase2_patha_results_20260303_140901.json"
     },
     {
       "split_strategy": "random",
@@ -210,8 +210,8 @@
       "mcnemar_c": 9,
       "n_test_samples": 180,
       "significant": false,
-      "elapsed_seconds": 38.25791597366333,
-      "result_path": "experiments/results/phase2_patha_case3_scale300_dsC/phase2_patha_results_20260303_105644.json"
+      "elapsed_seconds": 39.20750451087952,
+      "result_path": "experiments/results/phase2_patha_case3_scale300_dsC/phase2_patha_results_20260303_140940.json"
     }
   ],
   "aggregate": {

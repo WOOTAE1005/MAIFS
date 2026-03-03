@@ -101,6 +101,11 @@ Latest implemented items (code-level):
 - `experiments/analyze_patha_kfold_variance.py` added for split_seed/test_fold variance decomposition across multiple fixed-kfold summaries.
 - `experiments/run_phase2_patha.py` now emits 3-case study metrics (`cobra_only`, `daac_only`, `cobra_plus_daac`) and pairwise McNemar comparisons in result JSON.
 - `experiments/run_phase2_patha_multiseed.py` now aggregates 3-case metrics across seeds under `aggregate_case3`.
+- `src/consensus/cobra.py` DRWA variance 추정을 다중 신호(evidence 정합성/majority 불일치/confidence 이탈/fallback 신호)로 보강하고 `algorithm="auto"`를 명시 지원.
+- `src/meta/baselines.py` COBRABaseline이 고정 `trust*confidence` 집계 대신 런타임 `COBRAConsensus`(rot/drwa/avga/auto)를 직접 사용.
+- `configs/trust.py`에 metric 기반 trust 파생(`derive_trust_from_metrics`)과 `resolve_trust(..., metrics_override=...)` 경로 추가.
+- `src/maifs.py`, `src/agents/manager_agent.py`에 metric 기반 trust 주입 인자와 `consensus_algorithm="auto"` 전달 경로 추가.
+- 테스트 추가/갱신: `tests/test_meta_baselines.py`, `tests/test_trust_and_manager_alignment.py`.
 
 Known blockers and risks:
 - GitHub push may fail without local credential/SSH setup.
@@ -211,6 +216,7 @@ Entry format guideline:
 - `2026-03-03 | runtime/debate-trust | DebateChamber에서 challenger trust 기반 confidence delta 제거(토론 단계 trust-neutral) | .venv-qwen/bin/python -m pytest tests/test_debate.py tests/test_trust_and_manager_alignment.py -q (26 passed) | trust는 COBRA 합의 단계 단일 반영으로 유지`
 - `2026-03-03 | daac/pathA-multidata | 4개 데이터 조합(DS-A/B/C/D) x split-seed10 확장 평가 완료 및 통합 비교 json 생성 | experiments/results/phase2_patha_case3_multidata/multi_dataset_case3_comparison_20260303.json | 고정 0.5 fusion 열세 원인 분석(가중치 튜닝/구조 개선) 진행`
 - `2026-03-03 | docs/research | 논문용 표 문서(PAPER_TABLE_20260303) 추가 및 SSOT/runbook/README 링크 동기화 | 문서 경로/수치 수동 검증 | 신규 실험 시 표 재생성 자동화 스크립트 추가 검토`
+- `2026-03-03 | runtime/cobra-fidelity | DRWA variance 다중신호 보강 + COBRABaseline을 runtime COBRAConsensus로 정렬 + trust metric 파생 경로/auto 알고리즘 지원 추가 | .venv-qwen/bin/python -m pytest tests/test_cobra.py tests/test_trust_and_manager_alignment.py tests/test_meta_baselines.py -q (28 passed) + python -m py_compile configs/trust.py src/consensus/cobra.py src/meta/baselines.py src/maifs.py src/agents/manager_agent.py | Path A 재평가 시 baseline 수치 변화를 문서/표와 동기화`
 
 ## Golden Rules
 

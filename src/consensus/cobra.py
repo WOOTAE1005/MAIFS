@@ -10,8 +10,8 @@ COBRA (COnsensus-Based RewArd) 합의 알고리즘 구현
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, List, Any, Optional, Tuple
-from enum import Enum
+from typing import Dict, Any, Optional
+from collections import Counter
 import numpy as np
 
 from ..tools.base_tool import Verdict
@@ -143,6 +143,22 @@ class RootOfTrust(ConsensusAlgorithm):
                 algorithm_used="RoT"
             )
 
+        if total_weight <= 0:
+            return ConsensusResult(
+                final_verdict=Verdict.UNCERTAIN,
+                confidence=0.0,
+                algorithm_used="RoT",
+                verdict_scores={},
+                agent_weights={},
+                cohort_info={
+                    "trusted_count": len(trusted_cohort),
+                    "untrusted_count": len(untrusted_cohort),
+                    "trust_threshold": self.trust_threshold,
+                    "alpha": self.alpha
+                },
+                disagreement_level=0.0,
+            )
+
         final_verdict = max(verdict_scores.keys(), key=lambda v: verdict_scores[v])
         confidence = verdict_scores[final_verdict] / total_weight if total_weight > 0 else 0.0
 
@@ -231,6 +247,8 @@ class DRWA(ConsensusAlgorithm):
         # 에이전트별 분산 계산 (신뢰도의 일관성)
         variances = self._calculate_variances(responses)
         max_variance = max(variances.values()) if variances else 1.0
+        min_variance = min(variances.values()) if variances else 0.0
+        variance_range = max_variance - min_variance
 
         # 동적 가중치 계산
         dynamic_weights = {}
@@ -239,7 +257,10 @@ class DRWA(ConsensusAlgorithm):
             variance = variances.get(name, 0.5)
 
             # 분산이 낮을수록 (일관성 높을수록) 가중치 증가
-            variance_factor = 1 - (variance / (max_variance + 1e-10))
+            if variance_range <= 1e-10:
+                variance_factor = 1.0
+            else:
+                variance_factor = 1 - ((variance - min_variance) / (variance_range + 1e-10))
             dynamic_weight = base_trust + self.epsilon * variance_factor
 
             dynamic_weights[name] = max(0.1, min(1.0, dynamic_weight))
@@ -265,6 +286,23 @@ class DRWA(ConsensusAlgorithm):
                 algorithm_used="DRWA"
             )
 
+        if total_weight <= 0:
+            return ConsensusResult(
+                final_verdict=Verdict.UNCERTAIN,
+                confidence=0.0,
+                algorithm_used="DRWA",
+                verdict_scores={},
+                agent_weights=dynamic_weights,
+                cohort_info={
+                    "epsilon": self.epsilon,
+                    "variances": variances,
+                    "max_variance": max_variance,
+                    "min_variance": min_variance,
+                    "variance_range": variance_range,
+                },
+                disagreement_level=0.0,
+            )
+
         final_verdict = max(verdict_scores.keys(), key=lambda v: verdict_scores[v])
         confidence = verdict_scores[final_verdict] / total_weight if total_weight > 0 else 0.0
 
@@ -280,7 +318,9 @@ class DRWA(ConsensusAlgorithm):
             cohort_info={
                 "epsilon": self.epsilon,
                 "variances": variances,
-                "max_variance": max_variance
+                "max_variance": max_variance,
+                "min_variance": min_variance,
+                "variance_range": variance_range,
             },
             disagreement_level=disagreement
         )
@@ -292,24 +332,46 @@ class DRWA(ConsensusAlgorithm):
         """
         각 에이전트의 예측 분산 계산
 
-        여기서는 증거의 일관성을 기반으로 분산을 추정
+        여기서는 evidence/팀 합의 정합성 기반의 일관성 프록시를 사용한다.
+        값이 낮을수록 일관성이 높다.
         """
         variances = {}
+        if not responses:
+            return variances
+
+        confidences = np.array([r.confidence for r in responses.values()], dtype=np.float64)
+        conf_mean = float(np.mean(confidences)) if len(confidences) > 0 else 0.5
+        verdict_counter = Counter(r.verdict for r in responses.values())
+        max_count = max(verdict_counter.values()) if verdict_counter else 0
+        majority_verdicts = {v for v, cnt in verdict_counter.items() if cnt == max_count}
 
         for name, response in responses.items():
             # 증거 기반 분산 추정
             evidence = response.evidence
 
-            # 다양한 지표의 분산을 종합
-            variance_indicators = []
+            # 다양한 지표를 종합한 분산 프록시
+            variance_indicators = []  # 낮을수록 일관성 높음
 
-            # AI 점수와 신뢰도의 일치 여부
-            if "ai_generation_score" in evidence:
-                ai_score = evidence["ai_generation_score"]
+            # 1) evidence의 AI 점수와 verdict 정합성
+            ai_score = self._extract_ai_score(evidence)
+            if ai_score is not None:
                 if response.verdict == Verdict.AI_GENERATED:
-                    variance_indicators.append(1.0 - ai_score)  # 낮으면 일관적
-                else:
-                    variance_indicators.append(ai_score)  # 낮으면 일관적
+                    variance_indicators.append(1.0 - ai_score)
+                elif response.verdict in (Verdict.AUTHENTIC, Verdict.MANIPULATED):
+                    variance_indicators.append(ai_score)
+
+            # 2) 다수결 verdict와의 불일치 (동점 다수는 허용)
+            variance_indicators.append(
+                0.0 if response.verdict in majority_verdicts else 1.0
+            )
+
+            # 3) confidence 군집 중심에서의 이탈
+            conf_deviation = abs(float(response.confidence) - conf_mean)
+            variance_indicators.append(min(1.0, conf_deviation / 0.5))
+
+            # 4) fallback/에러 징후는 저신뢰 패널티
+            if self._has_fallback_signal(evidence):
+                variance_indicators.append(0.8)
 
             # 기본 분산
             if not variance_indicators:
@@ -318,6 +380,43 @@ class DRWA(ConsensusAlgorithm):
             variances[name] = np.mean(variance_indicators)
 
         return variances
+
+    @staticmethod
+    def _extract_ai_score(evidence: Dict[str, Any]) -> Optional[float]:
+        """evidence에서 AI 생성 점수를 추출 (없으면 None)."""
+        candidates = []
+        if isinstance(evidence, dict):
+            if "ai_generation_score" in evidence:
+                candidates.append(evidence.get("ai_generation_score"))
+            ai_detection = evidence.get("ai_detection")
+            if isinstance(ai_detection, dict):
+                candidates.append(ai_detection.get("ai_generation_score"))
+
+        for value in candidates:
+            if value is None:
+                continue
+            try:
+                score = float(value)
+            except (TypeError, ValueError):
+                continue
+            return max(0.0, min(1.0, score))
+        return None
+
+    @staticmethod
+    def _has_fallback_signal(evidence: Dict[str, Any]) -> bool:
+        """fallback/에러 기반의 불안정 신호 탐지."""
+        if not isinstance(evidence, dict):
+            return False
+        if bool(evidence.get("fallback_mode", False)):
+            return True
+        backend = str(evidence.get("backend", "")).lower()
+        if "fallback" in backend:
+            return True
+        for key in evidence.keys():
+            key_l = str(key).lower()
+            if key_l.endswith("_error") or key_l.endswith("_exception"):
+                return True
+        return False
 
 
 class AVGA(ConsensusAlgorithm):
@@ -459,7 +558,11 @@ class COBRAConsensus:
             "drwa": DRWA(epsilon=epsilon),
             "avga": AVGA(temperature=temperature)
         }
-        self.default_algorithm = default_algorithm
+        if default_algorithm in self.algorithms:
+            self.default_algorithm = default_algorithm
+        else:
+            # "auto" 또는 미등록 알고리즘은 안전 기본값으로 처리
+            self.default_algorithm = "drwa"
 
     def aggregate(
         self,
@@ -479,7 +582,7 @@ class COBRAConsensus:
             ConsensusResult: 합의 결과
         """
         # 알고리즘 선택
-        if algorithm is None:
+        if algorithm is None or algorithm == "auto":
             algorithm = self._select_algorithm(responses, trust_scores)
 
         algo = self.algorithms.get(algorithm, self.algorithms[self.default_algorithm])

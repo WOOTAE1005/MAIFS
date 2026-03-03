@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-03T10:20:00.177757",
+  "timestamp": "2026-03-03T13:55:23.803089",
   "config": {
     "collector": {
       "seed": 42,
@@ -40,7 +40,20 @@
         "fatformer": 0.85,
         "spatial": 0.85
       },
-      "algorithm": "drwa"
+      "algorithm": "drwa",
+      "selection": {
+        "mode": "val_best",
+        "candidate_algorithms": [
+          "rot",
+          "drwa",
+          "avga",
+          "auto"
+        ],
+        "candidate_trust_profiles": [
+          "static",
+          "metrics_derived"
+        ]
+      }
     },
     "router": {
       "oracle": {
@@ -189,7 +202,7 @@
       }
     },
     "output": {
-      "save_dir": "experiments/results/phase2_patha_case3_scale300"
+      "save_dir": "experiments/results/phase2_patha_case3_scale300_dsA"
     }
   },
   "summary_path": "experiments/results/phase2_patha_case3_scale300/repeated_split_summary_10runs_300_309_20260303.json",

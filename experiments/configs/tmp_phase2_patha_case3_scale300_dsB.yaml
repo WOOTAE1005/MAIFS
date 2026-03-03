@@ -30,6 +30,16 @@ cobra:
     fatformer: 0.85
     spatial: 0.85
   algorithm: drwa
+  selection:
+    mode: val_best
+    candidate_algorithms:
+    - rot
+    - drwa
+    - avga
+    - auto
+    candidate_trust_profiles:
+    - static
+    - metrics_derived
 router:
   oracle:
     power: 1.5

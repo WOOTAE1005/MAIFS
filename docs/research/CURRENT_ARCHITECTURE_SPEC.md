@@ -50,6 +50,9 @@ Rule:
 - Specialist response confidence is raw tool confidence (`tool_result.confidence`).
 - Agent trust score is applied once during consensus aggregation (COBRA/manager consensus stage).
 - Debate stage confidence update is trust-neutral (challenge strength only).
+- Trust source supports:
+  - fixed priors (`configs/trust.py::DEFAULT_TRUST`)
+  - metric-derived trust (`derive_trust_from_metrics`) + optional YAML partial override.
 
 This removes double-weighting risk from the old pattern:
 - old: `response.confidence = tool_conf * trust` and then COBRA applied trust again.
@@ -79,6 +82,8 @@ Examples:
 Path B (simulation):
 - Phase 1: disagreement feature learning (`43-dim`) vs baseline COBRA/majority.
 - Phase 2: adaptive routing (`47-dim = 43 + 4 router weights`).
+- `src/meta/baselines.py::COBRABaseline` now delegates to runtime `COBRAConsensus`
+  (supports `rot`/`drwa`/`avga`/`auto`) instead of fixed `trust*confidence` voting.
 
 Path A (real-data collector):
 - Collect specialist outputs from configured datasets.

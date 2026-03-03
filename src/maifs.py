@@ -101,14 +101,18 @@ class MAIFS:
         enable_debate: bool = True,
         debate_threshold: float = 0.3,
         consensus_algorithm: str = "drwa",
-        device: str = "cuda"
+        device: str = "cuda",
+        trust_scores: Optional[Dict[str, float]] = None,
+        trust_metrics: Optional[Dict[str, Dict[str, float]]] = None,
     ):
         """
         Args:
             enable_debate: 토론 기능 활성화 여부
             debate_threshold: 토론 개시 불일치 임계값
-            consensus_algorithm: 합의 알고리즘 ("rot", "drwa", "avga")
+            consensus_algorithm: 합의 알고리즘 ("rot", "drwa", "avga", "auto")
             device: 연산 디바이스 ("cuda" or "cpu")
+            trust_scores: trust override (부분 키 허용)
+            trust_metrics: agent metric 기반 trust 파생 입력
         """
         self.enable_debate = enable_debate
         self.debate_threshold = debate_threshold
@@ -124,7 +128,10 @@ class MAIFS:
         }
 
         # 에이전트별 신뢰도 (configs/trust.py SSOT)
-        self.trust_scores: Dict[str, float] = resolve_trust()
+        self.trust_scores: Dict[str, float] = resolve_trust(
+            trust_scores,
+            metrics_override=trust_metrics,
+        )
 
         # 합의 엔진
         self.consensus_engine = COBRAConsensus(
@@ -142,6 +149,8 @@ class MAIFS:
             consensus_algorithm=consensus_algorithm,
             enable_debate=enable_debate,
             debate_threshold=debate_threshold,
+            trust_scores=trust_scores,
+            trust_metrics=trust_metrics,
         )
 
     def analyze(
@@ -172,9 +181,10 @@ class MAIFS:
 
         # Step 2: 초기 합의 계산
         print("[MAIFS] 합의 계산 중...")
+        selected_algorithm = None if self.consensus_algorithm == "auto" else self.consensus_algorithm
         consensus_result = self.consensus_engine.aggregate(
             agent_responses, self.trust_scores,
-            algorithm=self.consensus_algorithm
+            algorithm=selected_algorithm
         )
 
         # Step 3: 토론 필요성 판단 및 진행
