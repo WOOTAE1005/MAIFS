@@ -1,0 +1,94 @@
+{
+  "cases": [
+    {
+      "case": 1,
+      "feature": "evidence_2ch",
+      "guard": "hybrid_only_safe",
+      "p1f1": 0.7671265615109354,
+      "p2f1": 0.7301179159524182,
+      "f1_diff": -0.03700864555851724,
+      "result_path": "experiments/results/tune_live140852_quick/case_01_evidence_2ch_hybrid_only_safe/phase2_patha_results_20260217_140937.json"
+    },
+    {
+      "case": 2,
+      "feature": "evidence_2ch",
+      "guard": "all_relaxed",
+      "p1f1": 0.7671265615109354,
+      "p2f1": 0.7777588824014763,
+      "f1_diff": 0.010632320890540892,
+      "result_path": "experiments/results/tune_live140852_quick/case_02_evidence_2ch_all_relaxed/phase2_patha_results_20260217_140938.json"
+    },
+    {
+      "case": 3,
+      "feature": "evidence_2ch",
+      "guard": "all_noguard",
+      "p1f1": 0.7671265615109354,
+      "p2f1": 0.7777588824014763,
+      "f1_diff": 0.010632320890540892,
+      "result_path": "experiments/results/tune_live140852_quick/case_03_evidence_2ch_all_noguard/phase2_patha_results_20260217_140940.json"
+    },
+    {
+      "case": 4,
+      "feature": "risk52",
+      "guard": "hybrid_only_safe",
+      "p1f1": 0.7671265615109354,
+      "p2f1": 0.7433862433862434,
+      "f1_diff": -0.023740318124692017,
+      "result_path": "experiments/results/tune_live140852_quick/case_04_risk52_hybrid_only_safe/phase2_patha_results_20260217_140942.json"
+    },
+    {
+      "case": 5,
+      "feature": "risk52",
+      "guard": "all_relaxed",
+      "p1f1": 0.7671265615109354,
+      "p2f1": 0.762369692346809,
+      "f1_diff": -0.004756869164126432,
+      "result_path": "experiments/results/tune_live140852_quick/case_05_risk52_all_relaxed/phase2_patha_results_20260217_140943.json"
+    },
+    {
+      "case": 6,
+      "feature": "risk52",
+      "guard": "all_noguard",
+      "p1f1": 0.7671265615109354,
+      "p2f1": 0.762369692346809,
+      "f1_diff": -0.004756869164126432,
+      "result_path": "experiments/results/tune_live140852_quick/case_06_risk52_all_noguard/phase2_patha_results_20260217_140945.json"
+    },
+    {
+      "case": 7,
+      "feature": "enhanced36",
+      "guard": "hybrid_only_safe",
+      "p1f1": 0.7671265615109354,
+      "p2f1": 0.720401747655584,
+      "f1_diff": -0.04672481385535143,
+      "result_path": "experiments/results/tune_live140852_quick/case_07_enhanced36_hybrid_only_safe/phase2_patha_results_20260217_140946.json"
+    },
+    {
+      "case": 8,
+      "feature": "enhanced36",
+      "guard": "all_relaxed",
+      "p1f1": 0.7671265615109354,
+      "p2f1": 0.720401747655584,
+      "f1_diff": -0.04672481385535143,
+      "result_path": "experiments/results/tune_live140852_quick/case_08_enhanced36_all_relaxed/phase2_patha_results_20260217_140948.json"
+    },
+    {
+      "case": 9,
+      "feature": "enhanced36",
+      "guard": "all_noguard",
+      "p1f1": 0.7671265615109354,
+      "p2f1": 0.7382102599493904,
+      "f1_diff": -0.02891630156154501,
+      "result_path": "experiments/results/tune_live140852_quick/case_09_enhanced36_all_noguard/phase2_patha_results_20260217_140949.json"
+    }
+  ],
+  "best": {
+    "case": 2,
+    "feature": "evidence_2ch",
+    "guard": "all_relaxed",
+    "p1f1": 0.7671265615109354,
+    "p2f1": 0.7777588824014763,
+    "f1_diff": 0.010632320890540892,
+    "result_path": "experiments/results/tune_live140852_quick/case_02_evidence_2ch_all_relaxed/phase2_patha_results_20260217_140938.json"
+  }
+}

@@ -243,6 +243,49 @@ class TestDebateChamber:
         assert len(result.rounds) > 0
         assert result.consensus_result is not None
 
+    def test_debate_confidence_update_is_trust_neutral(self):
+        """토론 단계 confidence 조정은 challenger trust에 의존하지 않아야 함"""
+        responses = {
+            "agent_a": create_mock_response(
+                "Agent A",
+                AgentRole.FREQUENCY,
+                Verdict.AUTHENTIC,
+                0.80,
+                arguments=["a1", "a2"],
+            ),
+            "agent_b": create_mock_response(
+                "Agent B",
+                AgentRole.NOISE,
+                Verdict.AI_GENERATED,
+                0.70,
+                arguments=["b1", "b2"],
+            ),
+        }
+        messages = [
+            DebateMessage(
+                agent_name="agent_b",
+                role=DebateRole.OPPONENT,
+                content="counter argument",
+                evidence=["e1", "e2", "e3"],  # stronger than agent_a arguments(2)
+                target_agent="agent_a",
+                round_number=1,
+            )
+        ]
+
+        updated_low_trust = self.chamber._update_responses_from_debate(
+            responses=responses,
+            messages=messages,
+            trust_scores={"agent_a": 0.2, "agent_b": 0.1},
+        )
+        updated_high_trust = self.chamber._update_responses_from_debate(
+            responses=responses,
+            messages=messages,
+            trust_scores={"agent_a": 0.2, "agent_b": 0.99},
+        )
+
+        assert updated_low_trust["agent_a"].confidence == pytest.approx(0.75)
+        assert updated_high_trust["agent_a"].confidence == pytest.approx(0.75)
+
     def test_debate_result_structure(self):
         """토론 결과 구조 검증"""
         responses = {

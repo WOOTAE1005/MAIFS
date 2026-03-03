@@ -138,7 +138,11 @@ class MAIFS:
         )
 
         # Manager Agent
-        self.manager = ManagerAgent()
+        self.manager = ManagerAgent(
+            consensus_algorithm=consensus_algorithm,
+            enable_debate=enable_debate,
+            debate_threshold=debate_threshold,
+        )
 
     def analyze(
         self,

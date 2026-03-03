@@ -150,6 +150,63 @@ def _apply_router_guard(
     return mixed, float(np.mean(use_phase2))
 
 
+def _apply_router_guard_proba(
+    phase1_proba: np.ndarray,
+    phase2_proba: np.ndarray,
+    scores: np.ndarray,
+    threshold: float,
+    *,
+    eps: float = 1e-12,
+) -> np.ndarray:
+    """router guard 임계값으로 확률도 row-wise 혼합한다."""
+    if phase1_proba.shape != phase2_proba.shape:
+        raise ValueError("phase1_proba and phase2_proba must share shape")
+    if phase1_proba.ndim != 2:
+        raise ValueError(f"proba arrays must be 2-D, got shape={phase1_proba.shape}")
+    if phase1_proba.shape[0] != scores.shape[0]:
+        raise ValueError("probability length and score length must match")
+
+    use_phase2 = scores >= float(threshold)
+    mixed = np.where(use_phase2[:, None], phase2_proba, phase1_proba).astype(np.float64)
+    row_sum = np.sum(mixed, axis=1, keepdims=True)
+    row_sum = np.where(row_sum <= eps, 1.0, row_sum)
+    return mixed / row_sum
+
+
+def _one_hot_proba_from_pred(
+    y_pred: np.ndarray,
+    n_classes: int,
+) -> np.ndarray:
+    """확률이 없을 때 hard prediction을 one-hot 확률로 변환한다."""
+    y = np.asarray(y_pred, dtype=np.int64).reshape(-1)
+    proba = np.zeros((y.shape[0], int(n_classes)), dtype=np.float64)
+    valid = (y >= 0) & (y < int(n_classes))
+    idx = np.where(valid)[0]
+    if idx.size:
+        proba[idx, y[idx]] = 1.0
+    return proba
+
+
+def _blend_probabilities(
+    p_cobra: np.ndarray,
+    p_daac: np.ndarray,
+    *,
+    cobra_weight: float = 0.5,
+    eps: float = 1e-12,
+) -> np.ndarray:
+    """COBRA/DAAC 확률을 convex combination으로 혼합한다."""
+    if p_cobra.shape != p_daac.shape:
+        raise ValueError("p_cobra and p_daac must share shape")
+    if p_cobra.ndim != 2:
+        raise ValueError(f"probability arrays must be 2-D, got shape={p_cobra.shape}")
+
+    w = float(np.clip(cobra_weight, 0.0, 1.0))
+    mixed = w * np.asarray(p_cobra, dtype=np.float64) + (1.0 - w) * np.asarray(p_daac, dtype=np.float64)
+    row_sum = np.sum(mixed, axis=1, keepdims=True)
+    row_sum = np.where(row_sum <= eps, 1.0, row_sum)
+    return mixed / row_sum
+
+
 def _select_guard_threshold(
     y_val: np.ndarray,
     phase1_val_pred: np.ndarray,
@@ -217,8 +274,10 @@ def _apply_non_regression_veto(
     *,
     phase1_results: Dict,
     phase1_preds: Dict,
+    phase1_probas: Dict | None = None,
     phase2_results: Dict,
     phase2_preds: Dict,
+    phase2_probas: Dict | None = None,
     best_p1: str,
     best_p2: str,
     tolerance: float = 0.0,
@@ -237,6 +296,9 @@ def _apply_non_regression_veto(
             phase2_results[fallback_key] = dict(phase1_results[best_p1])
         if fallback_key not in phase2_preds:
             phase2_preds[fallback_key] = phase1_preds[best_p1]
+        if phase1_probas is not None and phase2_probas is not None:
+            if fallback_key not in phase2_probas:
+                phase2_probas[fallback_key] = phase1_probas[best_p1]
         selected = fallback_key
         p2_f1 = float(phase2_results[selected]["macro_f1"])
 
@@ -258,9 +320,10 @@ def _evaluate_models(
     X_test: np.ndarray,
     y_test: np.ndarray,
     prefix: str,
-) -> Tuple[Dict, Dict]:
+) -> Tuple[Dict, Dict, Dict]:
     result_dict: Dict = {}
     pred_dict: Dict = {}
+    proba_dict: Dict = {}
     for model_name in MODEL_NAMES:
         y_pred = trainer.predict(model_name, X_test)
         y_proba = trainer.predict_proba(model_name, X_test)
@@ -274,7 +337,8 @@ def _evaluate_models(
             "per_class_f1": er.per_class_f1,
         }
         pred_dict[model_name] = y_pred
-    return result_dict, pred_dict
+        proba_dict[model_name] = y_proba
+    return result_dict, pred_dict, proba_dict
 
 
 def _build_macro_f1_result_dict(y_true: np.ndarray, pred_dict: Dict[str, np.ndarray]) -> Dict[str, Dict[str, float]]:
@@ -615,7 +679,7 @@ def run_phase2_patha(config: Dict) -> Dict:
 
     trainer_p1 = MetaTrainer(model_configs=model_configs)
     trainer_p1.train_all(X_train_meta, y_train, X_val_meta, y_val)
-    phase1_results, phase1_preds = _evaluate_models(
+    phase1_results, phase1_preds, phase1_probas = _evaluate_models(
         trainer=trainer_p1,
         evaluator=evaluator,
         X_test=X_test_meta,
@@ -623,6 +687,7 @@ def run_phase2_patha(config: Dict) -> Dict:
         prefix="phase1",
     )
     phase1_val_preds = {model_name: trainer_p1.predict(model_name, X_val_meta) for model_name in MODEL_NAMES}
+    phase1_val_probas = {model_name: trainer_p1.predict_proba(model_name, X_val_meta) for model_name in MODEL_NAMES}
     phase1_val_results = _build_macro_f1_result_dict(y_true=y_val, pred_dict=phase1_val_preds)
 
     X_train_p2 = np.concatenate([X_train_meta, W_train_pred], axis=1)
@@ -631,7 +696,7 @@ def run_phase2_patha(config: Dict) -> Dict:
 
     trainer_p2 = MetaTrainer(model_configs=model_configs)
     trainer_p2.train_all(X_train_p2, y_train, X_val_p2, y_val)
-    phase2_results, phase2_preds = _evaluate_models(
+    phase2_results, phase2_preds, phase2_probas = _evaluate_models(
         trainer=trainer_p2,
         evaluator=evaluator,
         X_test=X_test_p2,
@@ -639,6 +704,7 @@ def run_phase2_patha(config: Dict) -> Dict:
         prefix="phase2",
     )
     phase2_val_preds = {model_name: trainer_p2.predict(model_name, X_val_p2) for model_name in MODEL_NAMES}
+    phase2_val_probas = {model_name: trainer_p2.predict_proba(model_name, X_val_p2) for model_name in MODEL_NAMES}
     phase2_val_results = _build_macro_f1_result_dict(y_true=y_val, pred_dict=phase2_val_preds)
 
     guard_cfg = router_cfg.get("guard", {})
@@ -674,6 +740,8 @@ def run_phase2_patha(config: Dict) -> Dict:
         for model_name in MODEL_NAMES:
             phase1_val_pred = phase1_val_preds[model_name]
             phase2_val_pred = phase2_val_preds[model_name]
+            phase1_val_proba = phase1_val_probas[model_name]
+            phase2_val_proba = phase2_val_probas[model_name]
             selection = _select_guard_threshold(
                 y_val=y_val,
                 phase1_val_pred=phase1_val_pred,
@@ -697,7 +765,24 @@ def run_phase2_patha(config: Dict) -> Dict:
                 scores=scores_test,
                 threshold=float(selection["threshold"]),
             )
-            er_hybrid = evaluator.evaluate(y_test, hybrid_test_pred, model_name=f"phase2_hybrid_{model_name}")
+            hybrid_val_proba = _apply_router_guard_proba(
+                phase1_proba=phase1_val_proba,
+                phase2_proba=phase2_val_proba,
+                scores=scores_val,
+                threshold=float(selection["threshold"]),
+            )
+            hybrid_test_proba = _apply_router_guard_proba(
+                phase1_proba=phase1_probas[model_name],
+                phase2_proba=phase2_probas[model_name],
+                scores=scores_test,
+                threshold=float(selection["threshold"]),
+            )
+            er_hybrid = evaluator.evaluate(
+                y_test,
+                hybrid_test_pred,
+                hybrid_test_proba,
+                model_name=f"phase2_hybrid_{model_name}",
+            )
             hybrid_key = f"{model_key_prefix}_{model_name}"
             phase2_results[hybrid_key] = {
                 "macro_f1": er_hybrid.macro_f1,
@@ -708,7 +793,9 @@ def run_phase2_patha(config: Dict) -> Dict:
                 "per_class_f1": er_hybrid.per_class_f1,
             }
             phase2_preds[hybrid_key] = hybrid_test_pred
+            phase2_probas[hybrid_key] = hybrid_test_proba
             phase2_val_preds[hybrid_key] = hybrid_val_pred
+            phase2_val_probas[hybrid_key] = hybrid_val_proba
             phase2_val_results[hybrid_key] = {
                 "macro_f1": _safe_macro_f1(y_val, hybrid_val_pred),
             }
@@ -758,8 +845,10 @@ def run_phase2_patha(config: Dict) -> Dict:
         best_p2, guard_veto_info = _apply_non_regression_veto(
             phase1_results=phase1_val_results,
             phase1_preds=phase1_val_preds,
+            phase1_probas=phase1_val_probas,
             phase2_results=phase2_val_results,
             phase2_preds=phase2_val_preds,
+            phase2_probas=phase2_val_probas,
             best_p1=best_p1,
             best_p2=best_p2,
             tolerance=float(guard_cfg.get("non_regression_tolerance", 0.0)),
@@ -777,6 +866,8 @@ def run_phase2_patha(config: Dict) -> Dict:
                     phase2_results[fallback_key] = dict(phase1_results[best_p1])
                 if fallback_key not in phase2_preds:
                     phase2_preds[fallback_key] = phase1_preds[best_p1]
+                if fallback_key not in phase2_probas:
+                    phase2_probas[fallback_key] = phase1_probas[best_p1]
     else:
         guard_veto_info = {
             "applied": False,
@@ -808,6 +899,152 @@ def run_phase2_patha(config: Dict) -> Dict:
 
     subgroup_phase1_best = _evaluate_subgroups(y_true=y_test, y_pred=phase1_preds[best_p1], test_data=test_data)
     subgroup_phase2_best = _evaluate_subgroups(y_true=y_test, y_pred=phase2_preds[best_p2], test_data=test_data)
+
+    # ---------------------------------------------------------------
+    # Step 7: 3-case study (COBRA only / DAAC only / COBRA+DAAC)
+    # ---------------------------------------------------------------
+    print("\n[Step 7] 3-case 비교 (COBRA only / DAAC only / COBRA+DAAC)...")
+    case_cfg = config.get("case_study", {})
+    fusion_cfg = case_cfg.get("cobra_plus_daac", {}) if isinstance(case_cfg, dict) else {}
+    cobra_weight = float(fusion_cfg.get("cobra_weight", 0.5))
+
+    cobra_pred = y_pred_cobra
+    cobra_proba = y_proba_cobra
+    daac_pred = phase2_preds[best_p2]
+    daac_proba = phase2_probas.get(best_p2)
+    if daac_proba is None:
+        daac_proba = _one_hot_proba_from_pred(daac_pred, n_classes=int(cobra_proba.shape[1]))
+
+    fused_proba = _blend_probabilities(
+        p_cobra=cobra_proba,
+        p_daac=daac_proba,
+        cobra_weight=cobra_weight,
+    )
+    fused_pred = np.argmax(fused_proba, axis=1).astype(np.int64)
+
+    eval_case_cobra = evaluator.evaluate(
+        y_true=y_test,
+        y_pred=cobra_pred,
+        y_proba=cobra_proba,
+        model_name="case_cobra_only",
+    )
+    eval_case_daac = evaluator.evaluate(
+        y_true=y_test,
+        y_pred=daac_pred,
+        y_proba=daac_proba,
+        model_name="case_daac_only",
+    )
+    eval_case_fused = evaluator.evaluate(
+        y_true=y_test,
+        y_pred=fused_pred,
+        y_proba=fused_proba,
+        model_name="case_cobra_plus_daac",
+    )
+
+    cmp_cobra_daac = evaluator.compare(
+        y_true=y_test,
+        y_pred_a=cobra_pred,
+        y_pred_b=daac_pred,
+        model_a="cobra_only",
+        model_b="daac_only",
+        y_proba_a=cobra_proba,
+        y_proba_b=daac_proba,
+    )
+    cmp_cobra_fused = evaluator.compare(
+        y_true=y_test,
+        y_pred_a=cobra_pred,
+        y_pred_b=fused_pred,
+        model_a="cobra_only",
+        model_b="cobra_plus_daac",
+        y_proba_a=cobra_proba,
+        y_proba_b=fused_proba,
+    )
+    cmp_daac_fused = evaluator.compare(
+        y_true=y_test,
+        y_pred_a=daac_pred,
+        y_pred_b=fused_pred,
+        model_a="daac_only",
+        model_b="cobra_plus_daac",
+        y_proba_a=daac_proba,
+        y_proba_b=fused_proba,
+    )
+
+    print(
+        f"  cobra_only={eval_case_cobra.macro_f1:.4f} | "
+        f"daac_only={eval_case_daac.macro_f1:.4f} | "
+        f"cobra+daac={eval_case_fused.macro_f1:.4f} "
+        f"(cobra_weight={cobra_weight:.2f})"
+    )
+
+    case3_results = {
+        "config": {
+            "cobra_plus_daac": {
+                "cobra_weight": cobra_weight,
+                "daac_model_key": best_p2,
+            }
+        },
+        "cases": {
+            "cobra_only": {
+                "macro_f1": eval_case_cobra.macro_f1,
+                "balanced_accuracy": eval_case_cobra.balanced_accuracy,
+                "auroc": eval_case_cobra.auroc,
+                "ece": eval_case_cobra.ece,
+                "brier": eval_case_cobra.brier,
+                "per_class_f1": eval_case_cobra.per_class_f1,
+            },
+            "daac_only": {
+                "macro_f1": eval_case_daac.macro_f1,
+                "balanced_accuracy": eval_case_daac.balanced_accuracy,
+                "auroc": eval_case_daac.auroc,
+                "ece": eval_case_daac.ece,
+                "brier": eval_case_daac.brier,
+                "per_class_f1": eval_case_daac.per_class_f1,
+            },
+            "cobra_plus_daac": {
+                "macro_f1": eval_case_fused.macro_f1,
+                "balanced_accuracy": eval_case_fused.balanced_accuracy,
+                "auroc": eval_case_fused.auroc,
+                "ece": eval_case_fused.ece,
+                "brier": eval_case_fused.brier,
+                "per_class_f1": eval_case_fused.per_class_f1,
+            },
+        },
+        "comparisons": {
+            "cobra_vs_daac": {
+                "f1_diff": cmp_cobra_daac.f1_diff,
+                "ci_lower": cmp_cobra_daac.f1_ci_lower,
+                "ci_upper": cmp_cobra_daac.f1_ci_upper,
+                "mcnemar_statistic": cmp_cobra_daac.mcnemar_statistic,
+                "mcnemar_pvalue": cmp_cobra_daac.mcnemar_pvalue,
+                "mcnemar_b": cmp_cobra_daac.discordant_a_correct_b_wrong,
+                "mcnemar_c": cmp_cobra_daac.discordant_a_wrong_b_correct,
+                "n_test_samples": cmp_cobra_daac.n_samples,
+                "significant": cmp_cobra_daac.significant,
+            },
+            "cobra_vs_cobra_plus_daac": {
+                "f1_diff": cmp_cobra_fused.f1_diff,
+                "ci_lower": cmp_cobra_fused.f1_ci_lower,
+                "ci_upper": cmp_cobra_fused.f1_ci_upper,
+                "mcnemar_statistic": cmp_cobra_fused.mcnemar_statistic,
+                "mcnemar_pvalue": cmp_cobra_fused.mcnemar_pvalue,
+                "mcnemar_b": cmp_cobra_fused.discordant_a_correct_b_wrong,
+                "mcnemar_c": cmp_cobra_fused.discordant_a_wrong_b_correct,
+                "n_test_samples": cmp_cobra_fused.n_samples,
+                "significant": cmp_cobra_fused.significant,
+            },
+            "daac_vs_cobra_plus_daac": {
+                "f1_diff": cmp_daac_fused.f1_diff,
+                "ci_lower": cmp_daac_fused.f1_ci_lower,
+                "ci_upper": cmp_daac_fused.f1_ci_upper,
+                "mcnemar_statistic": cmp_daac_fused.mcnemar_statistic,
+                "mcnemar_pvalue": cmp_daac_fused.mcnemar_pvalue,
+                "mcnemar_b": cmp_daac_fused.discordant_a_correct_b_wrong,
+                "mcnemar_c": cmp_daac_fused.discordant_a_wrong_b_correct,
+                "n_test_samples": cmp_daac_fused.n_samples,
+                "significant": cmp_daac_fused.significant,
+            },
+        },
+    }
 
     # ---------------------------------------------------------------
     # Save
@@ -931,6 +1168,7 @@ def run_phase2_patha(config: Dict) -> Dict:
             "phase1_best": subgroup_phase1_best,
             "phase2_best": subgroup_phase2_best,
         },
+        "three_case_study": case3_results,
         "phase2_vs_phase1_best": {
             "phase1_best": best_p1,
             "phase2_best": best_p2,

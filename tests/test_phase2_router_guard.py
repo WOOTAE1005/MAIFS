@@ -10,7 +10,10 @@ import numpy as np
 
 from experiments.run_phase2_patha import (
     _apply_router_guard,
+    _apply_router_guard_proba,
     _apply_non_regression_veto,
+    _blend_probabilities,
+    _one_hot_proba_from_pred,
     _router_guard_score,
     _select_best_models_for_comparison,
     _select_guard_threshold,
@@ -133,6 +136,42 @@ def test_select_guard_threshold_blocks_routing_when_raw_phase2_val_is_worse():
     assert math.isinf(blocked["threshold"])
     assert math.isclose(blocked["phase2_route_rate"], 0.0, rel_tol=1e-9, abs_tol=1e-12)
     assert blocked["raw_phase2_val_gain"] < 0.0
+
+
+def test_apply_router_guard_proba_switches_rows_by_threshold():
+    phase1 = np.array(
+        [
+            [0.80, 0.20, 0.00],
+            [0.10, 0.70, 0.20],
+        ],
+        dtype=float,
+    )
+    phase2 = np.array(
+        [
+            [0.20, 0.80, 0.00],
+            [0.60, 0.20, 0.20],
+        ],
+        dtype=float,
+    )
+    scores = np.array([0.9, 0.1], dtype=float)
+
+    mixed = _apply_router_guard_proba(phase1, phase2, scores, threshold=0.5)
+    assert np.allclose(mixed[0], phase2[0])
+    assert np.allclose(mixed[1], phase1[1])
+    assert np.allclose(np.sum(mixed, axis=1), 1.0)
+
+
+def test_blend_probabilities_and_one_hot_fallback_are_normalized():
+    cobra = np.array([[0.9, 0.1, 0.0], [0.2, 0.3, 0.5]], dtype=float)
+    daac_pred = np.array([1, 2], dtype=int)
+    daac = _one_hot_proba_from_pred(daac_pred, n_classes=3)
+
+    mixed = _blend_probabilities(cobra, daac, cobra_weight=0.25)
+    assert mixed.shape == cobra.shape
+    assert np.allclose(np.sum(mixed, axis=1), 1.0)
+    # cobra_weight가 낮으므로 daac one-hot 방향으로 더 치우친다.
+    assert mixed[0, 1] > mixed[0, 0]
+    assert mixed[1, 2] > mixed[1, 1]
 
 
 def test_apply_non_regression_veto_switches_to_phase1_fallback_on_regression():

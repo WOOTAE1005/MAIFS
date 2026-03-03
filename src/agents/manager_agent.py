@@ -16,6 +16,8 @@ from .specialist_agents import (
     FatFormerAgent,
     SpatialAgent
 )
+from ..consensus.cobra import COBRAConsensus, ConsensusResult
+from ..debate.debate_chamber import DebateChamber, DebateResult
 from ..tools.base_tool import Verdict
 from configs.trust import resolve_trust
 
@@ -39,6 +41,8 @@ class ForensicReport:
     agent_responses: Dict[str, AgentResponse] = field(default_factory=dict)
     consensus_info: Dict[str, Any] = field(default_factory=dict)
     debate_history: List[Dict] = field(default_factory=list)
+    consensus_result: Optional[ConsensusResult] = None
+    debate_result: Optional[DebateResult] = None
     total_processing_time: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
@@ -51,6 +55,8 @@ class ForensicReport:
                 k: v.to_dict() for k, v in self.agent_responses.items()
             },
             "consensus_info": self.consensus_info,
+            "consensus": self.consensus_result.to_dict() if self.consensus_result else None,
+            "debate": self.debate_result.to_dict() if self.debate_result else None,
             "debate_rounds": len(self.debate_history),
             "total_processing_time": self.total_processing_time
         }
@@ -95,7 +101,10 @@ class ManagerAgent(BaseAgent):
         self,
         llm_model: str = "claude-sonnet-4-20250514",
         api_key: Optional[str] = None,
-        use_llm: bool = True
+        use_llm: bool = True,
+        consensus_algorithm: str = "drwa",
+        enable_debate: bool = True,
+        debate_threshold: float = 0.3,
     ):
         super().__init__(
             name="Manager Agent (총괄 관리자)",
@@ -114,6 +123,16 @@ class ManagerAgent(BaseAgent):
 
         # 에이전트별 신뢰도 (COBRA용, configs/trust.py SSOT)
         self.agent_trust: Dict[str, float] = resolve_trust()
+        self.consensus_algorithm = consensus_algorithm
+        self.enable_debate = enable_debate
+        self.debate_threshold = debate_threshold
+
+        # MAIFS와 동일한 합의/토론 엔진을 사용해 경로 분기를 없앤다.
+        self.consensus_engine = COBRAConsensus(default_algorithm=consensus_algorithm)
+        self.debate_chamber = DebateChamber(
+            consensus_engine=self.consensus_engine,
+            disagreement_threshold=debate_threshold
+        )
 
         # LLM 클라이언트 초기화
         self.use_llm = use_llm and LLM_AVAILABLE
@@ -141,20 +160,9 @@ class ManagerAgent(BaseAgent):
         # 1. 모든 전문가에게 분석 요청
         agent_responses = self._collect_analyses(image, context)
 
-        # 2. 합의 도출
-        consensus = self._compute_consensus(agent_responses)
-
-        # 3. 불일치 확인 및 토론
-        debate_history = []
-        if consensus["disagreement_level"] > 0.3:
-            debate_history = self._conduct_debate(agent_responses)
-            # 토론 후 합의 재계산
-            consensus = self._compute_consensus(agent_responses)
-
-        # 4. 최종 판정
-        final_verdict, confidence = self._make_final_decision(
-            agent_responses, consensus
-        )
+        consensus_result, debate_result, consensus, debate_history = self._run_consensus_pipeline(agent_responses)
+        final_verdict = consensus_result.final_verdict
+        confidence = consensus_result.confidence
 
         # 5. 보고서 생성
         summary = self._generate_summary(final_verdict, confidence, agent_responses)
@@ -172,8 +180,46 @@ class ManagerAgent(BaseAgent):
             agent_responses=agent_responses,
             consensus_info=consensus,
             debate_history=debate_history,
+            consensus_result=consensus_result,
+            debate_result=debate_result,
             total_processing_time=total_time
         )
+
+    def _run_consensus_pipeline(
+        self,
+        responses: Dict[str, AgentResponse]
+    ) -> tuple[ConsensusResult, Optional[DebateResult], Dict[str, Any], List[Dict[str, Any]]]:
+        """
+        MAIFS 런타임과 동일한 합의/토론 파이프라인.
+        """
+        consensus_result = self.consensus_engine.aggregate(
+            responses,
+            self.agent_trust,
+            algorithm=self.consensus_algorithm,
+        )
+
+        debate_result: Optional[DebateResult] = None
+        if self.enable_debate and self.debate_chamber.should_debate(responses):
+            debate_result = self.debate_chamber.conduct_debate(
+                responses,
+                trust_scores=self.agent_trust,
+            )
+            if debate_result.consensus_result is not None:
+                consensus_result = debate_result.consensus_result
+
+        consensus_info = consensus_result.to_dict()
+        debate_history: List[Dict[str, Any]] = []
+        if debate_result:
+            for round_info in debate_result.rounds:
+                debate_history.append(
+                    {
+                        "round": round_info.round_number,
+                        "messages": [msg.to_dict() for msg in round_info.messages],
+                        "duration": round_info.duration,
+                    }
+                )
+
+        return consensus_result, debate_result, consensus_info, debate_history
 
     def _collect_analyses(
         self,
@@ -198,51 +244,22 @@ class ManagerAgent(BaseAgent):
         responses: Dict[str, AgentResponse]
     ) -> Dict[str, Any]:
         """
-        COBRA 기반 합의 계산
+        COBRA 기반 합의 계산 (호환용 래퍼)
 
         Returns:
             합의 정보 (가중 평균 신뢰도, 불일치 수준 등)
         """
-        if not responses:
-            return {
-                "weighted_confidence": 0.0,
-                "disagreement_level": 1.0,
-                "verdict_distribution": {}
-            }
-
-        # 판정별 분포
-        verdict_distribution: Dict[Verdict, List[float]] = {}
-        total_weight = 0.0
-
-        for name, response in responses.items():
-            trust = self.agent_trust.get(name, 0.5)
-            weighted_conf = response.confidence * trust
-
-            if response.verdict not in verdict_distribution:
-                verdict_distribution[response.verdict] = []
-            verdict_distribution[response.verdict].append(weighted_conf)
-            total_weight += trust
-
-        # 불일치 수준 계산
-        # 서로 다른 판정 개수가 많을수록 불일치
-        num_verdicts = len(verdict_distribution)
-        disagreement = (num_verdicts - 1) / 3.0  # 최대 4개 판정
-
-        # 가중 평균 신뢰도
-        weighted_confidence = sum(
-            sum(confs) for confs in verdict_distribution.values()
-        ) / total_weight if total_weight > 0 else 0.0
-
+        consensus = self.consensus_engine.aggregate(
+            responses,
+            self.agent_trust,
+            algorithm=self.consensus_algorithm,
+        )
         return {
-            "weighted_confidence": weighted_confidence,
-            "disagreement_level": disagreement,
-            "verdict_distribution": {
-                k.value: sum(v) / len(v) for k, v in verdict_distribution.items()
-            },
-            "dominant_verdict": max(
-                verdict_distribution.keys(),
-                key=lambda v: sum(verdict_distribution[v])
-            ) if verdict_distribution else Verdict.UNCERTAIN
+            "weighted_confidence": consensus.confidence,
+            "disagreement_level": consensus.disagreement_level,
+            "verdict_distribution": consensus.verdict_scores,
+            "dominant_verdict": consensus.final_verdict,
+            "algorithm_used": consensus.algorithm_used,
         }
 
     def _conduct_debate(
@@ -250,76 +267,40 @@ class ManagerAgent(BaseAgent):
         responses: Dict[str, AgentResponse]
     ) -> List[Dict]:
         """
-        에이전트 간 토론 진행
+        에이전트 간 토론 진행 (호환용 래퍼)
 
         Returns:
             토론 기록
         """
-        debate_history = []
-
-        # 불일치하는 에이전트 쌍 찾기
-        verdicts = {name: r.verdict for name, r in responses.items()}
-        unique_verdicts = set(verdicts.values())
-
-        if len(unique_verdicts) <= 1:
-            return debate_history  # 토론 불필요
-
-        # 라운드 1: 반대 의견 제시
-        round_1 = {"round": 1, "exchanges": []}
-
-        for name_a, verdict_a in verdicts.items():
-            for name_b, verdict_b in verdicts.items():
-                if name_a < name_b and verdict_a != verdict_b:
-                    # A가 B에게 반론
-                    challenge = (
-                        f"[{name_a}→{name_b}] "
-                        f"나는 {verdict_a.value}로 판단했는데, "
-                        f"당신은 왜 {verdict_b.value}로 판단했나요? "
-                        f"내 근거: {responses[name_a].arguments[:1]}"
-                    )
-
-                    # B의 응답
-                    rebuttal = responses[name_b].tool_results[0].explanation if responses[name_b].tool_results else "증거 없음"
-
-                    round_1["exchanges"].append({
-                        "challenger": name_a,
-                        "challenged": name_b,
-                        "challenge": challenge,
-                        "rebuttal": rebuttal
-                    })
-
-        debate_history.append(round_1)
-
-        return debate_history
+        result = self.debate_chamber.conduct_debate(
+            responses,
+            trust_scores=self.agent_trust,
+        )
+        history: List[Dict[str, Any]] = []
+        for round_info in result.rounds:
+            history.append(
+                {
+                    "round": round_info.round_number,
+                    "messages": [msg.to_dict() for msg in round_info.messages],
+                    "duration": round_info.duration,
+                }
+            )
+        return history
 
     def _make_final_decision(
         self,
         responses: Dict[str, AgentResponse],
         consensus: Dict[str, Any]
     ) -> tuple:
-        """최종 판정 결정"""
-        if not responses:
-            return Verdict.UNCERTAIN, 0.0
-
-        # DRWA (Dynamic Reliability Weighted Aggregation) 적용
-        verdict_scores: Dict[Verdict, float] = {}
-
-        for name, response in responses.items():
-            trust = self.agent_trust.get(name, 0.5)
-
-            # 동적 가중치 = 신뢰도 * 분석 신뢰도
-            weight = trust * response.confidence
-
-            if response.verdict not in verdict_scores:
-                verdict_scores[response.verdict] = 0.0
-            verdict_scores[response.verdict] += weight
-
-        # 가장 높은 점수의 판정 선택
-        final_verdict = max(verdict_scores.keys(), key=lambda v: verdict_scores[v])
-        total_score = sum(verdict_scores.values())
-        confidence = verdict_scores[final_verdict] / total_score if total_score > 0 else 0.0
-
-        return final_verdict, confidence
+        """최종 판정 결정 (호환용 래퍼)"""
+        dominant = consensus.get("dominant_verdict", Verdict.UNCERTAIN)
+        confidence = float(consensus.get("weighted_confidence", 0.0))
+        if not isinstance(dominant, Verdict):
+            try:
+                dominant = Verdict(str(dominant).lower())
+            except ValueError:
+                dominant = Verdict.UNCERTAIN
+        return dominant, max(0.0, min(1.0, confidence))
 
     def _generate_summary(
         self,
@@ -367,8 +348,18 @@ class ManagerAgent(BaseAgent):
             parts.append("\n== 토론 기록 ==")
             for round_info in debate_history:
                 parts.append(f"라운드 {round_info['round']}:")
-                for exchange in round_info.get("exchanges", []):
-                    parts.append(f"  {exchange['challenge']}")
+                messages = round_info.get("messages", [])
+                if messages:
+                    for message in messages:
+                        agent_name = message.get("agent_name", "unknown")
+                        content = message.get("content", "")
+                        parts.append(f"  [{agent_name}] {content}")
+                else:
+                    # legacy format compatibility
+                    for exchange in round_info.get("exchanges", []):
+                        challenge = exchange.get("challenge", "")
+                        if challenge:
+                            parts.append(f"  {challenge}")
 
         return "\n".join(parts)
 
@@ -400,14 +391,7 @@ class ManagerAgent(BaseAgent):
         # 1. 모든 전문가에게 분석 요청
         agent_responses = self._collect_analyses(image, context)
 
-        # 2. 합의 도출
-        consensus = self._compute_consensus(agent_responses)
-
-        # 3. 불일치 확인 및 토론
-        debate_history = []
-        if consensus["disagreement_level"] > 0.3:
-            debate_history = self._conduct_debate(agent_responses)
-            consensus = self._compute_consensus(agent_responses)
+        consensus_result, debate_result, consensus, debate_history = self._run_consensus_pipeline(agent_responses)
 
         # 4. LLM 기반 분석 (사용 가능한 경우)
         if self.use_llm and self.llm_client and self.llm_client.is_available:
@@ -420,18 +404,25 @@ class ManagerAgent(BaseAgent):
             # LLM 응답 파싱
             try:
                 llm_result = json.loads(llm_response.content)
-                final_verdict = Verdict(llm_result.get("verdict", "UNCERTAIN"))
-                confidence = llm_result.get("confidence", 0.5)
+                verdict_raw = str(llm_result.get("verdict", "uncertain")).strip().lower()
+                try:
+                    final_verdict = Verdict(verdict_raw)
+                except ValueError:
+                    final_verdict = consensus_result.final_verdict
+                confidence = float(llm_result.get("confidence", consensus_result.confidence))
+                confidence = max(0.0, min(1.0, confidence))
                 summary = llm_result.get("summary", "")
                 detailed_reasoning = llm_result.get("reasoning", "")
             except (json.JSONDecodeError, ValueError):
                 # JSON 파싱 실패 시 기본 분석 사용
-                final_verdict, confidence = self._make_final_decision(agent_responses, consensus)
+                final_verdict = consensus_result.final_verdict
+                confidence = consensus_result.confidence
                 summary = self._generate_summary(final_verdict, confidence, agent_responses)
                 detailed_reasoning = llm_response.content
         else:
             # 규칙 기반 분석
-            final_verdict, confidence = self._make_final_decision(agent_responses, consensus)
+            final_verdict = consensus_result.final_verdict
+            confidence = consensus_result.confidence
             summary = self._generate_summary(final_verdict, confidence, agent_responses)
             detailed_reasoning = self._generate_detailed_reasoning(
                 agent_responses, consensus, debate_history
@@ -447,6 +438,8 @@ class ManagerAgent(BaseAgent):
             agent_responses=agent_responses,
             consensus_info=consensus,
             debate_history=debate_history,
+            consensus_result=consensus_result,
+            debate_result=debate_result,
             total_processing_time=total_time
         )
 
