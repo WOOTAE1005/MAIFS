@@ -27,6 +27,7 @@ from datasets import load_dataset
 from scipy.stats import ttest_rel
 from sklearn.feature_extraction.text import HashingVectorizer, TfidfVectorizer
 from sklearn.linear_model import LogisticRegression, SGDClassifier
+from sklearn.naive_bayes import ComplementNB
 from sklearn.model_selection import train_test_split
 
 EPS = 1e-12
@@ -44,6 +45,8 @@ class TextRewardModel:
 
     def score(self, texts: Sequence[str]) -> np.ndarray:
         x = self.vectorizer.transform(texts)
+        if self.backbone == "naive_bayes":
+            x = x.maximum(0)
         if hasattr(self.clf, "predict_proba"):
             return self.clf.predict_proba(x)[:, 1]
         return sigmoid(self.clf.decision_function(x))
@@ -133,6 +136,13 @@ def train_text_reward_model(
             lowercase=True,
             sublinear_tf=True,
         )
+        clf = SGDClassifier(
+            loss="log_loss",
+            alpha=5e-6,
+            max_iter=3000,
+            tol=1e-4,
+            random_state=seed,
+        )
     elif backbone == "hashing":
         vectorizer = HashingVectorizer(
             n_features=2**18,
@@ -141,18 +151,46 @@ def train_text_reward_model(
             lowercase=True,
             norm="l2",
         )
+        clf = SGDClassifier(
+            loss="log_loss",
+            alpha=5e-6,
+            max_iter=3000,
+            tol=1e-4,
+            random_state=seed,
+        )
+    elif backbone == "char_ngram":
+        # 형태론적 패턴 학습: 문자 수준 n-gram (word-boundary 포함)
+        vectorizer = TfidfVectorizer(
+            analyzer="char_wb",
+            ngram_range=(3, 5),
+            max_features=50000,
+            lowercase=True,
+            sublinear_tf=True,
+        )
+        clf = SGDClassifier(
+            loss="log_loss",
+            alpha=1e-5,
+            max_iter=3000,
+            tol=1e-4,
+            random_state=seed,
+        )
+    elif backbone == "naive_bayes":
+        # 확률 모델 기반: 작은 어휘로 확률적 추론 (word TF-IDF + ComplementNB)
+        vectorizer = TfidfVectorizer(
+            ngram_range=(1, 2),
+            max_features=3000,
+            lowercase=True,
+            sublinear_tf=False,
+            min_df=1,
+        )
+        clf = ComplementNB(alpha=0.1)
     else:
         raise ValueError(f"Unsupported backbone: {backbone}")
 
-    clf = SGDClassifier(
-        loss="log_loss",
-        alpha=5e-6,
-        max_iter=3000,
-        tol=1e-4,
-        random_state=seed,
-    )
-
     x = vectorizer.fit_transform(texts) if hasattr(vectorizer, "fit_transform") else vectorizer.transform(texts)
+    # ComplementNB는 음수 입력을 허용하지 않으므로 clip
+    if backbone == "naive_bayes":
+        x = x.maximum(0)
     clf.fit(x, labels)
     return TextRewardModel(vectorizer=vectorizer, clf=clf, backbone=backbone)
 
@@ -177,6 +215,12 @@ def build_partition_models(
     trusts = np.zeros(n_partitions, dtype=np.float64)
     is_trusted = np.zeros(n_partitions, dtype=np.int64)
 
+    # 이종 에이전트 풀: backbone이 "diverse"이면 라운드로빈으로 3가지 백본을 할당한다.
+    # Group A (1/3): word TF-IDF + SGD  (기존)
+    # Group B (1/3): char n-gram + SGD  (형태론적 패턴)
+    # Group C (1/3): small-vocab TF-IDF + ComplementNB  (확률 모델)
+    diverse_backbones = ["tfidf", "char_ngram", "naive_bayes"]
+
     for i, chunk in enumerate(chunks):
         x_part = [texts[j] for j in chunk]
         y_part = labels[chunk].copy()
@@ -189,11 +233,12 @@ def build_partition_models(
             trusts[i] = trusted_score
             is_trusted[i] = 1
 
+        agent_backbone = diverse_backbones[i % len(diverse_backbones)] if backbone == "diverse" else backbone
         model = train_text_reward_model(
             texts=x_part,
             labels=y_part,
             seed=seed + 101 * (i + 1),
-            backbone=backbone,
+            backbone=agent_backbone,
             tfidf_max_features=tfidf_max_features,
         )
         models.append(model)
@@ -821,7 +866,7 @@ def main() -> None:
     parser.add_argument("--trusted-score", type=float, default=0.85)
     parser.add_argument("--untrusted-score", type=float, default=0.45)
 
-    parser.add_argument("--backbone", choices=["tfidf", "hashing"], default="tfidf")
+    parser.add_argument("--backbone", choices=["tfidf", "hashing", "char_ngram", "naive_bayes", "diverse"], default="tfidf")
     parser.add_argument("--tfidf-max-features", type=int, default=70000)
 
     parser.add_argument("--cobra-robust-methods", type=str, default="standard,trimmed,mom,huber")

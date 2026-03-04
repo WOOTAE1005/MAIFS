@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 import yaml
 from sklearn.metrics import balanced_accuracy_score, f1_score
+from sklearn.model_selection import StratifiedKFold
 
 _project_root = Path(__file__).resolve().parent.parent
 if str(_project_root) not in sys.path:
@@ -38,6 +39,8 @@ from src.meta.evaluate import MetaEvaluator
 from src.meta.features import MetaFeatureExtractor
 from src.meta.simulator import AGENT_NAMES, TRUE_LABELS
 from src.meta.router import (
+    GainPredictorConfig,
+    GainPredictorRouter,
     MetaRouter,
     MetaRouterConfig,
     OracleWeightComputer,
@@ -968,8 +971,61 @@ def run_phase2_patha(config: Dict) -> Dict:
     if guard_enabled:
         print("\n  - Router guard fallback 활성화: val 기준 임계값 자동 선택")
         score_mode = str(guard_cfg.get("score_mode", "max_minus_entropy"))
-        scores_val = _router_guard_score(W_val_pred, mode=score_mode)
-        scores_test = _router_guard_score(W_test_pred, mode=score_mode)
+        use_gain_predictor = bool(guard_cfg.get("use_gain_predictor", False))
+
+        # GainPredictorRouter: oracle weight 마진 대신 "Phase2 gain" 직접 예측
+        # val set OOF predictions으로 per-model gain predictor 학습 (out-of-sample)
+        gain_predictors: Dict[str, GainPredictorRouter] = {}
+        if use_gain_predictor:
+            print("  - GainPredictorRouter 모드: val split OOF gain labels 학습")
+            gp_cfg = guard_cfg.get("gain_predictor", {})
+            gp_config_kwargs = dict(
+                n_estimators=int(gp_cfg.get("n_estimators", 100)),
+                max_depth=int(gp_cfg.get("max_depth", 3)),
+                learning_rate=float(gp_cfg.get("learning_rate", 0.1)),
+                subsample=float(gp_cfg.get("subsample", 0.8)),
+                min_samples_leaf=int(gp_cfg.get("min_samples_leaf", 3)),
+                random_state=int(gp_cfg.get("random_state", 42)),
+            )
+            # 5-fold OOF on val for unbiased threshold selection scores
+            # (Phase1/Phase2 were trained on train set → val predictions are out-of-sample)
+            skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+            oof_gain_scores: Dict[str, np.ndarray] = {
+                mn: np.zeros(len(y_val)) for mn in MODEL_NAMES
+            }
+            y_val_arr = np.asarray(y_val)
+            for _fold_idx, (tr_idx, oof_idx) in enumerate(skf.split(X_val_img, y_val_arr)):
+                for mn in MODEL_NAMES:
+                    gpr_fold = GainPredictorRouter(GainPredictorConfig(**gp_config_kwargs))
+                    gpr_fold.fit(
+                        X_val_img[tr_idx],
+                        phase1_val_preds[mn][tr_idx],
+                        phase2_val_preds[mn][tr_idx],
+                        y_val_arr[tr_idx],
+                    )
+                    oof_gain_scores[mn][oof_idx] = gpr_fold.gain_score(X_val_img[oof_idx])
+
+            # Final predictor trained on all val data for test set scoring
+            gain_predictors: Dict[str, GainPredictorRouter] = {}
+            for mn in MODEL_NAMES:
+                gpr = GainPredictorRouter(GainPredictorConfig(**gp_config_kwargs))
+                gpr.fit(
+                    X_val_img,
+                    phase1_val_preds[mn],
+                    phase2_val_preds[mn],
+                    y_val_arr,
+                )
+                gain_predictors[mn] = gpr
+                print(
+                    f"    [{mn}] gain_rate={gpr.gain_rate_train_:.3f} "
+                    f"n_gain={gpr.n_gain_samples_} fitted={gpr._fitted}"
+                )
+            # 공통 scores_val/test는 사용하지 않음 (per-model로 계산)
+            scores_val = None
+            scores_test = None
+        else:
+            scores_val = _router_guard_score(W_val_pred, mode=score_mode)
+            scores_test = _router_guard_score(W_test_pred, mode=score_mode)
 
         raw_threshold_grid = guard_cfg.get("threshold_grid", [])
         if isinstance(raw_threshold_grid, (int, float)):
@@ -978,8 +1034,15 @@ def run_phase2_patha(config: Dict) -> Dict:
             threshold_grid = [float(x) for x in raw_threshold_grid]
         else:
             threshold_grid = []
+
+        # threshold grid 기준 scores: gain_predictor 모드에선 OOF scores 사용 (unbiased)
+        _scores_for_grid = (
+            oof_gain_scores[MODEL_NAMES[0]]
+            if use_gain_predictor and gain_predictors
+            else scores_val
+        )
         thresholds = _build_guard_threshold_grid(
-            scores_val,
+            _scores_for_grid,
             threshold_grid=threshold_grid,
             n_thresholds=int(guard_cfg.get("n_thresholds", 11)),
         )
@@ -990,6 +1053,21 @@ def run_phase2_patha(config: Dict) -> Dict:
             max_route_rate = float(max_route_rate)
 
         for model_name in MODEL_NAMES:
+            # per-model gain predictor 스코어 또는 공통 oracle-weight 스코어 선택
+            if use_gain_predictor and model_name in gain_predictors:
+                cur_scores_val = oof_gain_scores[model_name]  # OOF for unbiased threshold selection
+                cur_scores_test = gain_predictors[model_name].gain_score(X_test_img)
+                # 모델별 threshold grid 재계산 (score 분포가 다를 수 있음)
+                cur_thresholds = _build_guard_threshold_grid(
+                    cur_scores_val,
+                    threshold_grid=threshold_grid,
+                    n_thresholds=int(guard_cfg.get("n_thresholds", 11)),
+                )
+            else:
+                cur_scores_val = scores_val
+                cur_scores_test = scores_test
+                cur_thresholds = thresholds
+
             phase1_val_pred = phase1_val_preds[model_name]
             phase2_val_pred = phase2_val_preds[model_name]
             phase1_val_proba = phase1_val_probas[model_name]
@@ -998,8 +1076,8 @@ def run_phase2_patha(config: Dict) -> Dict:
                 y_val=y_val,
                 phase1_val_pred=phase1_val_pred,
                 phase2_val_pred=phase2_val_pred,
-                scores_val=scores_val,
-                thresholds=thresholds,
+                scores_val=cur_scores_val,
+                thresholds=cur_thresholds,
                 min_val_gain=min_val_gain,
                 min_phase2_val_gain=min_phase2_val_gain,
                 max_route_rate=max_route_rate,
@@ -1008,25 +1086,25 @@ def run_phase2_patha(config: Dict) -> Dict:
             hybrid_val_pred, route_rate_val = _apply_router_guard(
                 phase1_pred=phase1_val_pred,
                 phase2_pred=phase2_val_pred,
-                scores=scores_val,
+                scores=cur_scores_val,
                 threshold=float(selection["threshold"]),
             )
             hybrid_test_pred, route_rate_test = _apply_router_guard(
                 phase1_pred=phase1_preds[model_name],
                 phase2_pred=phase2_preds[model_name],
-                scores=scores_test,
+                scores=cur_scores_test,
                 threshold=float(selection["threshold"]),
             )
             hybrid_val_proba = _apply_router_guard_proba(
                 phase1_proba=phase1_val_proba,
                 phase2_proba=phase2_val_proba,
-                scores=scores_val,
+                scores=cur_scores_val,
                 threshold=float(selection["threshold"]),
             )
             hybrid_test_proba = _apply_router_guard_proba(
                 phase1_proba=phase1_probas[model_name],
                 phase2_proba=phase2_probas[model_name],
-                scores=scores_test,
+                scores=cur_scores_test,
                 threshold=float(selection["threshold"]),
             )
             er_hybrid = evaluator.evaluate(
@@ -1052,7 +1130,8 @@ def run_phase2_patha(config: Dict) -> Dict:
                 "macro_f1": _safe_macro_f1(y_val, hybrid_val_pred),
             }
             guard_tuning[hybrid_key] = {
-                "score_mode": score_mode,
+                "score_mode": "gain_predictor" if use_gain_predictor else score_mode,
+                "use_gain_predictor": use_gain_predictor,
                 "threshold": float(selection["threshold"]),
                 "phase2_route_rate_val": float(route_rate_val),
                 "phase2_route_rate_test": float(route_rate_test),

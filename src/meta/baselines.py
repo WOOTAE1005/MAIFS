@@ -8,7 +8,7 @@ import numpy as np
 from collections import Counter
 from typing import Dict, List, Optional
 
-from .simulator import SimulatedOutput, AGENT_NAMES, TRUE_LABELS, VERDICTS
+from .simulator import SimulatedOutput, AGENT_NAMES, TRUE_LABELS
 from configs.trust import DEFAULT_TRUST as _DEFAULT_TRUST
 from configs.trust import resolve_trust
 from ..tools.base_tool import Verdict

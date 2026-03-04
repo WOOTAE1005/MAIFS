@@ -11,7 +11,7 @@ from PIL import Image
 import time
 import json
 
-from .agents.manager_agent import ManagerAgent, ForensicReport
+from .agents.manager_agent import ManagerAgent
 from .agents.specialist_agents import (
     FrequencyAgent,
     NoiseAgent,
