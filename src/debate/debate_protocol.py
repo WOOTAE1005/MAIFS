@@ -5,7 +5,6 @@ Multi-Agent 토론 프로토콜 및 종료 조건 관리
 from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
-import json
 
 from ..agents.base_agent import AgentResponse
 from ..tools.base_tool import Verdict

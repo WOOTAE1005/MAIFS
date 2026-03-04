@@ -19,7 +19,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegressor
 from sklearn.linear_model import Ridge
 from sklearn.neural_network import MLPRegressor
 from sklearn.multioutput import MultiOutputRegressor
@@ -382,7 +382,7 @@ class MetaRouter:
         logits = self.predict_logits(X_img)
         return softmax(logits, axis=1)
 
-    def evaluate(self, X_img: np.ndarray, oracle_weights: np.ndarray) -> RouterMetrics:
+    def evaluate(self, X_img: np.ndarray, oracle_weights: np.ndarray) -> "RouterMetrics":
         w_true = np.asarray(oracle_weights, dtype=np.float64)
         w_pred = self.predict_weights(X_img)
 
@@ -396,3 +396,103 @@ class MetaRouter:
         top1 = float(np.mean(np.argmax(w_pred, axis=1) == np.argmax(w_true, axis=1)))
 
         return RouterMetrics(mse_weights=mse, kl_weights=kl, top1_match=top1)
+
+
+# ---------------------------------------------------------------------------
+# GainPredictorRouter: Oracle weight 예측 대신 "Phase2가 Phase1을 이기는 샘플"을
+# 직접 예측하는 binary classifier. Guard score로 사용.
+# ---------------------------------------------------------------------------
+
+@dataclass
+class GainPredictorConfig:
+    """GainPredictorRouter 설정."""
+    n_estimators: int = 100
+    max_depth: int = 3
+    learning_rate: float = 0.1
+    subsample: float = 0.8
+    min_samples_leaf: int = 3
+    random_state: int = 42
+
+
+class GainPredictorRouter:
+    """
+    Phase 2 guard score 대체용 binary classifier.
+
+    학습 목표:
+        gain_label = (phase2_correct AND phase1_wrong) → 1, 그 외 → 0
+
+    이 모델이 출력하는 P(gain)을 guard threshold와 비교해
+    Phase 2 사용 여부를 결정한다. 기존 top2_margin(oracle weight 마진)보다
+    직접적으로 "Phase 2 이득" 가능성을 예측하므로 라우팅 정확도가 높다.
+
+    사용법:
+        gpr = GainPredictorRouter()
+        gpr.fit(X_train_img, phase1_train_pred, phase2_train_pred, y_train)
+        scores_val = gpr.gain_score(X_val_img)   # (N,) in [0, 1]
+    """
+
+    def __init__(self, config: Optional[GainPredictorConfig] = None):
+        self.config = config or GainPredictorConfig()
+        self.model: Optional[Pipeline] = None
+        self._fitted: bool = False
+        self.n_gain_samples_: int = 0
+        self.gain_rate_train_: float = 0.0
+
+    def fit(
+        self,
+        X_img: np.ndarray,
+        y_phase1_pred: np.ndarray,
+        y_phase2_pred: np.ndarray,
+        y_true: np.ndarray,
+    ) -> "GainPredictorRouter":
+        """
+        Args:
+            X_img:         proxy image feature 벡터 (N, D)
+            y_phase1_pred: Phase 1 hard predictions (N,) — int labels
+            y_phase2_pred: Phase 2 hard predictions (N,) — int labels
+            y_true:        ground truth labels (N,) — int labels
+        """
+        X = np.asarray(X_img, dtype=np.float64)
+        y1 = np.asarray(y_phase1_pred, dtype=np.int64)
+        y2 = np.asarray(y_phase2_pred, dtype=np.int64)
+        yt = np.asarray(y_true, dtype=np.int64)
+
+        gain_labels = ((y2 == yt) & (y1 != yt)).astype(np.int32)
+        self.n_gain_samples_ = int(gain_labels.sum())
+        self.gain_rate_train_ = float(self.n_gain_samples_) / max(1, len(gain_labels))
+
+        if self.n_gain_samples_ == 0:
+            # gain case가 없으면 학습 불가 — 항상 0.0 반환
+            self._fitted = False
+            return self
+
+        clf = GradientBoostingClassifier(
+            n_estimators=int(self.config.n_estimators),
+            max_depth=int(self.config.max_depth),
+            learning_rate=float(self.config.learning_rate),
+            subsample=float(self.config.subsample),
+            min_samples_leaf=int(self.config.min_samples_leaf),
+            random_state=int(self.config.random_state),
+        )
+        self.model = Pipeline([
+            ("scaler", StandardScaler()),
+            ("clf", clf),
+        ])
+        self.model.fit(X, gain_labels)
+        self._fitted = True
+        return self
+
+    def gain_score(self, X_img: np.ndarray) -> np.ndarray:
+        """
+        P(Phase2 gains over Phase1) per sample.
+
+        Returns:
+            np.ndarray: shape (N,), values in [0, 1]
+        """
+        X = np.asarray(X_img, dtype=np.float64)
+        if not self._fitted:
+            # fallback: uniform — threshold selection이 이를 처리
+            return np.full(len(X), self.gain_rate_train_, dtype=np.float64)
+        proba = self.model.predict_proba(X)
+        # predict_proba returns (N, 2); column 1 = P(gain=1)
+        return proba[:, 1].astype(np.float64)

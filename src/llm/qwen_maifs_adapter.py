@@ -15,8 +15,7 @@ from .qwen_client import (
     AgentRole,
     InferenceResult
 )
-from ..tools.base_tool import Verdict, ToolResult
-from ..agents.base_agent import AgentResponse
+from ..tools.base_tool import Verdict
 
 
 @dataclass

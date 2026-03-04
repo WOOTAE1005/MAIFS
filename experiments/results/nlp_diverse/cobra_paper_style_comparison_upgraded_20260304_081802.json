@@ -1,0 +1,187 @@
+{
+  "timestamp_utc": "20260304_081802",
+  "config": {
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "n_partitions": 15,
+    "n_trusted": 9,
+    "poison_flip_prob": 0.1,
+    "trusted_score": 0.85,
+    "untrusted_score": 0.45,
+    "backbone": "diverse",
+    "tfidf_max_features": 70000,
+    "cobra_robust_methods": [
+      "standard",
+      "trimmed",
+      "mom",
+      "huber"
+    ],
+    "rot_thresholds": [
+      0.6,
+      0.7,
+      0.8
+    ],
+    "rot_alphas": [
+      0.2,
+      0.35,
+      0.5
+    ],
+    "drwa_epsilons": [
+      0.1,
+      0.25,
+      0.4
+    ],
+    "avga_betas": [
+      0.8,
+      1.5,
+      2.5
+    ],
+    "trim_ratio": 0.1,
+    "mom_groups": 5,
+    "huber_c": 1.5,
+    "max_sst2_train": 24000,
+    "max_imdb_train": 20000,
+    "max_imdb_test": 8000,
+    "max_hh_train_pairs": 25000,
+    "max_hh_test_pairs": 4000
+  },
+  "results": [
+    {
+      "dataset": "sst2",
+      "metric": "accuracy",
+      "cobra": {
+        "mean": 0.7809633027522936,
+        "std": 0.011294561699307475,
+        "runs": [
+          0.7717889908256881,
+          0.7775229357798165,
+          0.7935779816513762
+        ]
+      },
+      "daac": {
+        "mean": 0.7924311926605506,
+        "std": 0.009102355427974466,
+        "runs": [
+          0.7889908256880734,
+          0.7855504587155964,
+          0.8027522935779816
+        ]
+      },
+      "cobra_plus_daac": {
+        "mean": 0.7901376146788991,
+        "std": 0.0030341184759915163,
+        "runs": [
+          0.7924311926605505,
+          0.786697247706422,
+          0.7912844036697247
+        ]
+      },
+      "pvalue_daac_vs_cobra": 0.05788856046800822,
+      "pvalue_fusion_vs_daac": 0.6697108704620907,
+      "pvalue_fusion_vs_cobra": 0.30014578777623535,
+      "selected_cobra_algorithm_counts": {
+        "rot": 0,
+        "drwa": 3,
+        "avga": 0
+      },
+      "selected_robust_method_counts": {
+        "standard": 2,
+        "trimmed": 1
+      }
+    },
+    {
+      "dataset": "imdb",
+      "metric": "accuracy",
+      "cobra": {
+        "mean": 0.8770000000000001,
+        "std": 0.0008749999999999988,
+        "runs": [
+          0.877625,
+          0.876,
+          0.877375
+        ]
+      },
+      "daac": {
+        "mean": 0.8772500000000001,
+        "std": 0.0008660254037844714,
+        "runs": [
+          0.87775,
+          0.87775,
+          0.87625
+        ]
+      },
+      "cobra_plus_daac": {
+        "mean": 0.8771249999999999,
+        "std": 0.0013520817282989856,
+        "runs": [
+          0.87825,
+          0.8775,
+          0.875625
+        ]
+      },
+      "pvalue_daac_vs_cobra": 0.792236991680664,
+      "pvalue_fusion_vs_daac": 0.7418011102527471,
+      "pvalue_fusion_vs_cobra": 0.9093403172176979,
+      "selected_cobra_algorithm_counts": {
+        "rot": 1,
+        "drwa": 1,
+        "avga": 1
+      },
+      "selected_robust_method_counts": {
+        "standard": 1,
+        "trimmed": 2
+      }
+    },
+    {
+      "dataset": "hh_rlhf",
+      "metric": "correct_score_accuracy",
+      "cobra": {
+        "mean": 0.5330833333333334,
+        "std": 0.0070059498523278845,
+        "runs": [
+          0.52525,
+          0.53875,
+          0.53525
+        ]
+      },
+      "daac": {
+        "mean": 0.5268333333333334,
+        "std": 0.00718650355411676,
+        "runs": [
+          0.51875,
+          0.52925,
+          0.5325
+        ]
+      },
+      "cobra_plus_daac": {
+        "mean": 0.5355,
+        "std": 0.00845207075218845,
+        "runs": [
+          0.52575,
+          0.54075,
+          0.54
+        ]
+      },
+      "pvalue_daac_vs_cobra": 0.08529783341924585,
+      "pvalue_fusion_vs_daac": 0.02595075595503736,
+      "pvalue_fusion_vs_cobra": 0.19163272365980774,
+      "selected_cobra_algorithm_counts": {
+        "rot": 1,
+        "drwa": 1,
+        "avga": 1
+      },
+      "selected_robust_method_counts": {
+        "huber": 2,
+        "standard": 1
+      }
+    }
+  ],
+  "table_markdown": "| Dataset | Metric | COBRA | DAAC | COBRA+DAAC(gated) | p (DAAC vs COBRA) | p (Fusion vs DAAC) |\n|---|---:|---:|---:|---:|---:|---:|\n| sst2 | accuracy | 0.7810 \u00b1 0.0113 | 0.7924 \u00b1 0.0091 | 0.7901 \u00b1 0.0030 | 0.05789 | 0.6697 |\n| imdb | accuracy | 0.8770 \u00b1 0.0009 | 0.8773 \u00b1 0.0009 | 0.8771 \u00b1 0.0014 | 0.7922 | 0.7418 |\n| hh_rlhf | correct_score_accuracy | 0.5331 \u00b1 0.0070 | 0.5268 \u00b1 0.0072 | 0.5355 \u00b1 0.0085 | 0.0853 | 0.02595 |\n| macro_avg | mean(metric) | 0.7303 \u00b1 0.1775 | 0.7322 \u00b1 0.1828 | 0.7343 \u00b1 0.1775 | 0.7583 | 0.5977 |",
+  "notes": [
+    "Upgrades applied: stronger shared RM backbone, COBRA hyperparameter search, robust aggregation, DAAC pairwise ranking, learned gated fusion.",
+    "SST-2 uses validation split for labeled evaluation because test labels are hidden on GLUE."
+  ]
+}

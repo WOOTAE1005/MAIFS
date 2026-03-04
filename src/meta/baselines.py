@@ -8,7 +8,7 @@ import numpy as np
 from collections import Counter
 from typing import Dict, List, Optional
 
-from .simulator import SimulatedOutput, AGENT_NAMES, TRUE_LABELS, VERDICTS
+from .simulator import SimulatedOutput, AGENT_NAMES, TRUE_LABELS
 from configs.trust import DEFAULT_TRUST as _DEFAULT_TRUST
 from configs.trust import resolve_trust
 from ..tools.base_tool import Verdict
@@ -162,3 +162,29 @@ class COBRABaseline:
             proba.append(scores)
 
         return np.array(proba, dtype=np.float64)
+
+
+class WeightedMajorityVoteBaseline:
+    """
+    Trust score × confidence 가중 다수결 베이스라인
+
+    각 레이블에 대해 (trust_score × confidence) 합산 후 argmax.
+    """
+
+    def __init__(self, trust_scores: Optional[Dict[str, float]] = None):
+        self.trust_scores = resolve_trust(trust_scores)
+
+    def predict_single(self, sample: SimulatedOutput) -> int:
+        label_scores: Dict[str, float] = {label: 0.0 for label in TRUE_LABELS}
+        for agent in AGENT_NAMES:
+            verdict = sample.agent_verdicts[agent]
+            if verdict not in TRUE_LABELS:
+                continue
+            label_scores[verdict] += (
+                self.trust_scores.get(agent, 1.0) * float(sample.agent_confidences[agent])
+            )
+        best = max(label_scores, key=label_scores.get)  # type: ignore[arg-type]
+        return TRUE_LABELS.index(best)
+
+    def predict(self, samples: List[SimulatedOutput]) -> np.ndarray:
+        return np.array([self.predict_single(s) for s in samples], dtype=np.int64)
