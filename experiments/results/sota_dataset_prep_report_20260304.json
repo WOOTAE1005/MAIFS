@@ -1,0 +1,54 @@
+{
+  "timestamp": "2026-03-04T16:25:32.808883",
+  "seed": 42,
+  "exports": {
+    "opensdi": {
+      "target_dir": "datasets/OpenSDID_subset",
+      "counts": {
+        "authentic": 300,
+        "manipulated": 300,
+        "ai_generated": 300
+      },
+      "total_saved": 900
+    },
+    "aigen_fake_part": {
+      "target_dir": "datasets/AI-GenBench_fakepart_subset",
+      "counts": {
+        "ai_generated": 300
+      },
+      "total_saved": 300
+    },
+    "aigen_proxy": {
+      "target_dir": "datasets/AI-GenBench_proxy",
+      "counts": {
+        "authentic": 300,
+        "manipulated": 300,
+        "ai_generated": 300
+      },
+      "total_saved": 900
+    }
+  },
+  "restricted_dataset_checks": {
+    "coverage": {
+      "url": "https://1drv.ms/f/s!AggVhXcCj1FLhUUyUrqSpV_yI_GH",
+      "http_status": 200,
+      "error": null,
+      "local_found": [],
+      "local_ready": false
+    },
+    "columbia": {
+      "url": "https://www.ee.columbia.edu/ln/dvmm/downloads/authsplcuncmp/",
+      "http_status": 403,
+      "error": null,
+      "local_found": [],
+      "local_ready": false
+    },
+    "nist16": {
+      "url": "https://mig.nist.gov/MFC/PubData/Resources.html",
+      "http_status": 401,
+      "error": null,
+      "local_found": [],
+      "local_ready": false
+    }
+  }
+}
